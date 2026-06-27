@@ -3,15 +3,12 @@
 # compile_wsl.sh — Build the Msquared MEX files on WSL/Linux.
 #
 # Compiles:
-#   msquared_mex.cpp              -> msquared_mex.mexa64
+#   msquared_mex.cpp  -> msquared_mex.mexa64
 #       Uses FFTW3 with OpenMP and the system's FFTW multithreaded library.
-#   msquared_calculate_mex.cpp    -> msquared_calculate_mex.mexa64
-#       Pure C++ math, defers FFTs to MATLAB via mexCallMATLAB. No external
-#       FFTW dependency.
 #
 # Usage:
-#   ./compile_wsl.sh                  # build both
-#   ./compile_wsl.sh msquared_mex     # build only the FFTW version
+#   ./compile_wsl.sh                  # build all
+#   ./compile_wsl.sh msquared_mex     # build only msquared_mex
 #   ./compile_wsl.sh clean            # remove built artifacts
 #
 # Target CPU: tuned for 12th Gen Intel Core (Alder Lake), e.g. i7-12700H.
@@ -63,26 +60,14 @@ build_fftw() {
         return 1
     fi
     echo "==> Building $out (FFTW3 + OpenMP)"
-    mex "${MEX_FLAGS[@]}" -outdir "$REPO_DIR/+beam" -output "$(basename "$out")" "$src"    echo "    -> $REPO_DIR/+beam/$out.mexa64"
-}
-
-build_matlab_fft() {
-    local src="msquared_calculate_mex.cpp"
-    local out="msquared_calculate_mex"
-    if [[ ! -f "$src" ]]; then
-        echo "ERROR: $src not found in $REPO_DIR" >&2
-        return 1
-    fi
-    echo "==> Building $out (MATLAB FFT, no external deps)"
-    # No FFTW needed — uses mexCallMATLAB for FFTs.
-    # -R2018a enables the modern C++ MEX API (mxComplexDouble, mxGetComplexDoubles).
-    # Also needs -fopenmp in LDFLAGS because the source uses OpenMP pragmas.
-    mex "${MEX_FLAGS[@]}" -R2018a -outdir "$REPO_DIR/+beam" -output "$(basename "$out")" "$src"    echo "    -> $REPO_DIR/+beam/$out.mexa64"
+    mex "${MEX_FLAGS[@]}" -outdir "$REPO_DIR/+beam" -output "$(basename "$out")" "$src"
+    echo "    -> $REPO_DIR/+beam/$out.mexa64"
 }
 
 clean_artifacts() {
     echo "==> Cleaning build artifacts"
-    rm -f +beam/msquared_mex.mexa64 +beam/msquared_mex.o \          +beam/msquared_calculate_mex.mexa64 +beam/msquared_calculate_mex.o    echo "    done"
+    rm -f +beam/msquared_mex.mexa64 +beam/msquared_mex.o
+    echo "    done"
 }
 
 check_deps() {
@@ -121,16 +106,15 @@ check_deps
 
 targets=("$@")
 if [[ ${#targets[@]} -eq 0 ]]; then
-    targets=(msquared_mex msquared_calculate_mex)
+    targets=(msquared_mex)
 fi
 
 for t in "${targets[@]}"; do
     case "$t" in
-        msquared_mex)             build_fftw ;;
-        msquared_calculate_mex)   build_matlab_fft ;;
+        msquared_mex)   build_fftw ;;
         *)
             echo "ERROR: unknown target '$t'" >&2
-            echo "Valid targets: msquared_mex, msquared_calculate_mex, clean" >&2
+            echo "Valid targets: msquared_mex, clean" >&2
             exit 1
             ;;
     esac

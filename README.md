@@ -19,7 +19,7 @@ addpath('C:\path\to\beam-analysis')
 ```
 
 The functions live in the `+beam` namespace and are accessed as
-`beam.Msquared`, `beam.msquared_mex`, and `beam.msquared_calculate_mex`.
+`beam.Msquared` and `beam.msquared_mex`.
 
 ## Repository Layout
 
@@ -28,7 +28,6 @@ The functions live in the `+beam` namespace and are accessed as
 | `+beam/Msquared.m` | Reference MATLAB class implementation. |
 | `+beam/msquared_mex.*` | Compiled MEX accelerators (`.mexw64`, `.mexa64`). |
 | `msquared_mex.cpp` | C++ MEX source. |
-| `msquared_calculate_mex.cpp` | Lower-level C++ MEX source. |
 | `examples/` | Example scripts and benchmarking. |
 | `tests/test_compare_mex.m` | MEX-vs-class regression tests. |
 | `compile_mex.m` / `compile_wsl.sh` | MEX build scripts for Windows and WSL/Linux. |
@@ -118,7 +117,6 @@ runtests('tests.test_compare_mex')
 - `beam.Msquared().calculate()` always returns fields named `M2_x`, `M2_y`, `wx`, etc., regardless of whether the input is 2-D or 3-D.
 - `beam.msquared_mex` returns `M2_x`, `M2_y`, … for 2-D, unflagged 3-D, or 3-D input with `'pulse'`.
 - `'pulse_flat'` uses the same `pulse_` prefixed names as `beam.Msquared().calculate_pulse_flat()`.
-- `beam.msquared_calculate_mex` mirrors the class exactly and includes extra fields `z0x2` and `z0y2` that `beam.msquared_mex` omits.
 
 ## Known Behaviours / Caveats
 

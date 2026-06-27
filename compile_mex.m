@@ -1,6 +1,6 @@
 %% compile_mex.m
 %
-% Compile msquared_mex.cpp and msquared_calculate_mex.cpp with
+% Compile msquared_mex.cpp with
 % platform-specific optimization flags.  Run this from the repo root.
 %
 % Example:
@@ -57,11 +57,9 @@ function compile_mex(profile)
     fprintf('Linker optimization flags: %s\n', ldFlags);
 
     %% Source files to compile
-    %  msquared_calculate_mex.cpp uses mxComplexDouble/mxGetComplexDoubles,
-    %  which require the R2018a interleaved-complex API.  msquared_mex.cpp
-    %  still uses the separate real/imaginary API (R2017b).
-    sources = {'msquared_mex.cpp', 'msquared_calculate_mex.cpp'};
-    extraFlags = {{}, {'-R2018a'}};   % per-source additional mex arguments
+    %  msquared_mex.cpp uses the separate real/imaginary API (R2017b).
+    sources = {'msquared_mex.cpp'};
+    extraFlags = {{}};   % per-source additional mex arguments
 
     %% Backup (and temporarily remove) existing .mexw64 files
     %  On Windows a loaded/locked MEX cannot be overwritten.  We move it
