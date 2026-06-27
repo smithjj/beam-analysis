@@ -35,8 +35,24 @@
 #include <cstring>
 #include <complex>
 #include <vector>
+#include <chrono>
 #ifdef _OPENMP
 #include <omp.h>
+#endif
+
+#ifdef USE_FFTW
+#include "fftw3.h"
+#endif
+
+#ifdef MEX_PROFILE
+#define MEX_TIMER_START(name) auto __t_##name = std::chrono::high_resolution_clock::now()
+#define MEX_TIMER_STOP(name, label) { \
+    auto __dt_##name = std::chrono::high_resolution_clock::now() - __t_##name; \
+    double __ms_##name = std::chrono::duration<double, std::milli>(__dt_##name).count(); \
+    mexPrintf("[MEX_PROFILE] " label ": %.3f ms\n", __ms_##name); }
+#else
+#define MEX_TIMER_START(name)
+#define MEX_TIMER_STOP(name, label)
 #endif
 
 using cdouble = std::complex<double>;
@@ -95,6 +111,27 @@ static void fftshift2_real(double* arr, mwSize Nx, mwSize Ny) {
     }
     std::memcpy(arr, tmp.data(), Nx * Ny * sizeof(double));
 }
+
+#ifdef USE_FFTW
+/* In-place batched 2-D complex FFT using MATLAB's libmwfftw3.
+ * Data is stored in MATLAB column-major order with logical dimensions
+ * Nx (1st dim) x Ny (2nd dim).  We pass {Ny, Nx} to FFTW so that the
+ * contiguous dimension (Nx) is the last/fastest one. */
+static void fftw_batch_2d(cdouble* data, mwSize Nx, mwSize Ny, mwSize Nt) {
+    int n[2] = { static_cast<int>(Ny), static_cast<int>(Nx) };
+    int np = static_cast<int>(Nx * Ny);
+    int howmany = static_cast<int>(Nt);
+    fftw_plan plan = fftw_plan_many_dft(2, n, howmany,
+                                        reinterpret_cast<fftw_complex*>(data), nullptr, 1, np,
+                                        reinterpret_cast<fftw_complex*>(data), nullptr, 1, np,
+                                        FFTW_FORWARD, FFTW_ESTIMATE);
+    if (!plan) {
+        mexErrMsgIdAndTxt("msquared_mex:fftw", "fftw_plan_many_dft failed");
+    }
+    fftw_execute(plan);
+    fftw_destroy_plan(plan);
+}
+#endif
 
 struct SliceResult {
     double xBar, yBar, wx, wy;
@@ -288,6 +325,7 @@ static void compute_pulse_flat(
     mwSize np = Nx * Ny;
 
     /* ---- Fluence in xy space: Fxy = sum_t |E|^2 ---- */
+    MEX_TIMER_START(fxy);
     std::vector<double> Fxy(np, 0.0);
     for (mwSize k = 0; k < Nt; k++) {
         const cdouble* src = field + k * np;
@@ -295,11 +333,16 @@ static void compute_pulse_flat(
             Fxy[i] += std::norm(src[i]);
         }
     }
+    MEX_TIMER_STOP(fxy, "pulse_flat Fxy accumulation");
 
     /* ---- Batch FFT of all time slices ----
-     * Important: create a true Nx-by-Ny-by-Nt array, not Nx-by-(Ny*Nt),
-     * so MATLAB fft2 operates independently on each time slice.
+     * Use FFTW directly when available; otherwise fall back to MATLAB's fft2.
      */
+    MEX_TIMER_START(fft);
+#ifdef USE_FFTW
+    std::vector<cdouble> fft_field(field, field + np * Nt);
+    fftw_batch_2d(fft_field.data(), Nx, Ny, Nt);
+#else
     mwSize fdims[3] = {Nx, Ny, Nt};
     mxArray *field_in = mxCreateNumericArray(3, fdims, mxDOUBLE_CLASS, mxCOMPLEX);
     double *fpr = mxGetPr(field_in);
@@ -313,11 +356,21 @@ static void compute_pulse_flat(
     mxDestroyArray(field_in);
     const double *fft_pr = mxGetPr(fft_out);
     const double *fft_pi = mxGetPi(fft_out);
+#endif
+    MEX_TIMER_STOP(fft, "pulse_flat batch FFT");
 
     /* ---- Fluence in k-space: Fkxky = sum_t |fftshift(fft2(E))|^2 ---- */
+    MEX_TIMER_START(fkxky);
     std::vector<double> Fkxky(np, 0.0);
-    std::vector<cdouble> Ek_buf(np);
     for (mwSize k = 0; k < Nt; k++) {
+#ifdef USE_FFTW
+        cdouble *Ek = fft_field.data() + k * np;
+        fftshift2(Ek, Nx, Ny);
+        for (mwSize i = 0; i < np; i++) {
+            Fkxky[i] += std::norm(Ek[i]);
+        }
+#else
+        std::vector<cdouble> Ek_buf(np);
         for (mwSize i = 0; i < np; i++) {
             double re = fft_pr[k * np + i];
             double im = fft_pi ? fft_pi[k * np + i] : 0.0;
@@ -327,8 +380,12 @@ static void compute_pulse_flat(
         for (mwSize i = 0; i < np; i++) {
             Fkxky[i] += std::norm(Ek_buf[i]);
         }
+#endif
     }
+#ifndef USE_FFTW
     mxDestroyArray(fft_out);
+#endif
+    MEX_TIMER_STOP(fkxky, "pulse_flat Fkxky accumulation");
 
     /* ---- Total energy (proportional) ---- */
     double U = 0, Uk = 0;
@@ -384,6 +441,7 @@ static void compute_pulse_flat(
     wky_out = std::sqrt(wkysq);
 
     /* ---- Iterative curvature removal (3 passes on full 3D field) ---- */
+    MEX_TIMER_START(curv);
     std::vector<cdouble> Ework(field, field + np * Nt);
     double Rx_vals[3], Ry_vals[3];
 
@@ -392,6 +450,54 @@ static void compute_pulse_flat(
         std::vector<double> xImSum(np, 0.0);
         std::vector<double> yImSum(np, 0.0);
 
+#ifdef _OPENMP
+        int nthreads = omp_get_max_threads();
+        std::vector<std::vector<double>> xImSum_thr(nthreads, std::vector<double>(np, 0.0));
+        std::vector<std::vector<double>> yImSum_thr(nthreads, std::vector<double>(np, 0.0));
+
+        #pragma omp parallel
+        {
+            int tid = omp_get_thread_num();
+            #pragma omp for
+            for (mwSize k = 0; k < Nt; k++) {
+                const cdouble* Ek = Ework.data() + k * np;
+
+                /* x-derivative (along rows, 1st dim) */
+                for (mwSize ix = 0; ix < Ny; ix++) {
+                    for (mwSize iy = 1; iy < Nx - 1; iy++) {
+                        mwSize idx = IDX(iy, ix, Nx);
+                        double Pr = Ek[idx].real(), Qi = Ek[idx].imag();
+                        double ap = Ek[IDX(iy + 1, ix, Nx)].real();
+                        double aq = Ek[IDX(iy + 1, ix, Nx)].imag();
+                        double bp = Ek[IDX(iy - 1, ix, Nx)].real();
+                        double bq = Ek[IDX(iy - 1, ix, Nx)].imag();
+                        xImSum_thr[tid][idx] += (Qi * (ap - bp) - Pr * (aq - bq)) / dx;
+                    }
+                }
+
+                /* y-derivative (along columns, 2nd dim) */
+                for (mwSize iy = 0; iy < Nx; iy++) {
+                    for (mwSize ix = 1; ix < Ny - 1; ix++) {
+                        mwSize idx = IDX(iy, ix, Nx);
+                        double Pr = Ek[idx].real(), Qi = Ek[idx].imag();
+                        double ap = Ek[IDX(iy, ix + 1, Nx)].real();
+                        double aq = Ek[IDX(iy, ix + 1, Nx)].imag();
+                        double bp = Ek[IDX(iy, ix - 1, Nx)].real();
+                        double bq = Ek[IDX(iy, ix - 1, Nx)].imag();
+                        yImSum_thr[tid][idx] += (Qi * (ap - bp) - Pr * (aq - bq)) / dy;
+                    }
+                }
+            }
+        }
+
+        /* Reduce per-thread accumulators */
+        for (int t = 0; t < nthreads; t++) {
+            for (mwSize i = 0; i < np; i++) {
+                xImSum[i] += xImSum_thr[t][i];
+                yImSum[i] += yImSum_thr[t][i];
+            }
+        }
+#else
         for (mwSize k = 0; k < Nt; k++) {
             const cdouble* Ek = Ework.data() + k * np;
 
@@ -421,6 +527,7 @@ static void compute_pulse_flat(
                 }
             }
         }
+#endif
 
         /* Spatial sum for Ax, Ay */
         double Ax_sum = 0, Ay_sum = 0;
@@ -438,20 +545,28 @@ static void compute_pulse_flat(
 
         /* Remove curvature from FULL 3D field (skip on last pass) */
         if (P < 2) {
-            for (mwSize i = 0; i < np * Nt; i++) {
-                mwSize iy = i % Nx;
-                mwSize ix = (i / Nx) % Ny;
-                mwSize idx = IDX(iy, ix, Nx);
-                double xc = xmat[idx] - xBar;
-                double yc = ymat[idx] - yBar;
-                double phase = -k0 * (xc * xc / (2.0 * Rx) + yc * yc / (2.0 * Ry));
-                double sp = std::sin(phase);
-                double cp = std::cos(phase);
-                double er = Ework[i].real(), ei = Ework[i].imag();
-                Ework[i] = cdouble(er * cp - ei * sp, er * sp + ei * cp);
+#ifdef _OPENMP
+            #pragma omp parallel for
+#endif
+            for (mwSize k = 0; k < Nt; k++) {
+                cdouble* Ek = Ework.data() + k * np;
+                for (mwSize ix = 0; ix < Ny; ix++) {
+                    for (mwSize iy = 0; iy < Nx; iy++) {
+                        mwSize idx = IDX(iy, ix, Nx);
+                        double xc = xmat[idx] - xBar;
+                        double yc = ymat[idx] - yBar;
+                        double phase = -k0 * (xc * xc / (2.0 * Rx) + yc * yc / (2.0 * Ry));
+                        double sp = std::sin(phase);
+                        double cp = std::cos(phase);
+                        double er = Ek[idx].real(), ei = Ek[idx].imag();
+                        Ek[idx] = cdouble(er * cp - ei * sp, er * sp + ei * cp);
+                    }
+                }
             }
         }
     }
+
+    MEX_TIMER_STOP(curv, "pulse_flat curvature removal (3 passes)");
 
     /* Harmonic sum of R */
     double Rx_inv = 0, Ry_inv = 0;
@@ -598,7 +713,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         double* wy = mxGetPr(wy_arr);
 
 #ifdef _OPENMP
-        #pragma omp parallel for
+        #pragma omp parallel for if(N3 > 1)
 #endif
         for (mwSize K = 0; K < N3; K++) {
             const cdouble* src = field.data() + K * np_sm;
@@ -717,12 +832,19 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     }
 
     /* ---- Standard (per-slice) mode ---- */
-    /* Batch FFT all slices at once (much faster than per-slice mexCallMATLAB) */
-    mxArray *fft_field = nullptr;
+    /* Batch FFT all slices at once (direct FFTW, or MATLAB fft2 fallback) */
+#ifdef USE_FFTW
+    std::vector<cdouble> fft_field(field);
+    MEX_TIMER_START(fft);
+    fftw_batch_2d(fft_field.data(), Nx, Ny, N3);
+    MEX_TIMER_STOP(fft, "standard batch FFT");
+#else
+    mxArray *fft_field_mx = nullptr;
     mxArray *field_in = const_cast<mxArray*>(field_mx);
-    mexCallMATLAB(1, &fft_field, 1, &field_in, "fft2");
-    const double *fft_pr = mxGetPr(fft_field);
-    const double *fft_pi = mxGetPi(fft_field);
+    mexCallMATLAB(1, &fft_field_mx, 1, &field_in, "fft2");
+    const double *fft_pr = mxGetPr(fft_field_mx);
+    const double *fft_pi = mxGetPi(fft_field_mx);
+#endif
 
     /* Process slices */
     std::vector<double> M2x(N3), M2y(N3), Rx(N3), Ry(N3);
@@ -733,7 +855,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 
     mwSize slice_size = Nx * Ny;
 #ifdef _OPENMP
-    #pragma omp parallel
+    #pragma omp parallel if(N3 > 1)
 #endif
     {
         std::vector<cdouble> slice(slice_size);
@@ -746,6 +868,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
             const cdouble *src = field.data() + K * slice_size;
             std::memcpy(slice.data(), src, slice_size * sizeof(cdouble));
 
+#ifdef USE_FFTW
+            std::memcpy(Ek_buf.data(), fft_field.data() + K * slice_size, slice_size * sizeof(cdouble));
+#else
             if (fft_pi) {
                 for (mwSize i = 0; i < slice_size; i++) {
                     Ek_buf[i] = cdouble(fft_pr[K * slice_size + i], fft_pi[K * slice_size + i]);
@@ -755,6 +880,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
                     Ek_buf[i] = cdouble(fft_pr[K * slice_size + i], 0.0);
                 }
             }
+#endif
             fftshift2(Ek_buf.data(), Nx, Ny);
 
             SliceResult r = compute_slice(slice.data(), Ek_buf.data(), xmat.data(), ymat.data(),
