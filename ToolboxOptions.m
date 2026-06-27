@@ -10,8 +10,8 @@ function opts = ToolboxOptions()
 %   See also matlab.addons.toolbox.packageToolbox.
 
     root = fileparts(mfilename('fullpath'));
-    opts = matlab.addons.toolbox.ToolboxOptions("ToolboxFolder", root, ...
-        "Identifier", "4fc9c860-046b-492a-868e-27a83a9f6047");
+    opts = matlab.addons.toolbox.ToolboxOptions(root, ...
+        "4fc9c860-046b-492a-868e-27a83a9f6047");
 
     opts.ToolboxName        = "Msquared Toolbox";
     opts.ToolboxVersion     = "1.0.0";
