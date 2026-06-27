@@ -1,29 +1,44 @@
-% Calculate the M-squared beam quality of an input electric field (the electric field
-% input argument should be a 2 or 3 dimensional array). This calculation is taken from the
-% Crystal Nonlinear Optics: with SNLO examples (second edition) book, see page 299-303
-% (chapter 7.7). See as-photonics.com/book for more details about the book.
+%Msquared_class - Calculate M-squared beam quality of an electric field
+%   OBJ = Msquared_class creates an M-squared calculator with default
+%   spatial grids and empty field.
+%
+%   OBJ = Msquared_class(Name=VALUE) specifies one or more properties
+%   using name-value arguments.
+%
+%   Msquared_class calculates the M-squared beam quality factor and
+%   related quantities for 2D (x,y) or 3D (x,y,z or x,y,t) electric
+%   fields. The calculation follows the method in Chapter 7.7 of
+%   Crystal Nonlinear Optics: with SNLO examples (second edition).
+%
+%   Msquared_class functions:
+%       calculate                    - Calculate M-squared and beam quantities
+%       calculate_pulse_flat         - Fluence-based analysis for pulsed beams
+%       calculate_second_moment      - Calculate second moment beam widths
+%
+%   Msquared_class properties:
+%       xgrid           - X position matrix (m)
+%       ygrid           - Y position matrix (m)
+%       field           - Electric field array (V/m)
+%       wavelength      - Wavelength (m)
+%       power_threshold - Minimum relative power for 3rd dim analysis
+%       results         - Calculation results structure
+%       debugging       - Enable diagnostic output
+%
+%   By Jesse Smith jesse.smith@as-photonics.com
+%   Last modified October 30, 2023
+%
+%   changelog:
+%   10/30/23 - clean more code, add equation numbers
+%   8/30/23  - remove old code, clean up comments
+%   8/26/22  - use loop thru nz/nt rather than big 3d arrays
+%            - add power_threshold property
+%   8/17/22  - add pulse_flattened_Exyt and flattened_Exyz results
+%
+%   See also fft2, fftshift, meshgrid
 
-% By Jesse Smith jesse.smith@as-photonics.com
-% Last modified October 30, 2023
 
-
-% changelog:
-% 10/30/23
-%  - clean more code
-%  - add equation numbers, where they can be found in the Crystal Nonlinear Optics book by Arlee Smith 
-% 8/30/23
-%  - remove some old code and clean up comments, add more dsecriptions of calculation steps
-% 8/26/22
-%  - use loop thru nz/nt rather than big 3d arrays (if nt is large, you can
-%    literally run out of memory) 
-%  - add power_threshold property: if this is 
-% 8/17/22
-%  - add to results property a fieldname pulse_flattened_Exyt, and flattened_Exyz (which
-%    are fields that have had their curvature removed three times)
 classdef Msquared_class
-    % Calculate beam profile quantities for 2d (x,y) or 3d (x,y,z) or (x,y,t) fields. Including 
 
-    % Make handle? Copyable?
     properties
         %  x position matrix (2d) units m
         xgrid (:,:) double {mustBeFinite,mustBeReal} = zeros(32,32);
@@ -48,12 +63,15 @@ classdef Msquared_class
     methods
 
         function varargout = calculate_pulse_flat(obj)
-            %% Fluence-based beam analysis for pulsed waves
-            %  This calculation uses the values stored in class properties xgrid, ygrid,
-            %  field, and wavelength. The method is analogous to the instantaneous cw x&y
-            %  calculation. See Chapter 7.7.3 of Crystal Nonlinear Optics: with SNLO
-            %  examples (second edition). More details can be found at as-photonics.com/book
-
+            %calculate_pulse_flat - Fluence-based M-squared for pulsed beams
+            %   RESULTS = calculate_pulse_flat(OBJ) calculates the
+            %   fluence-based M-squared beam quality for a pulsed
+            %   electric field. The field must be a 3D array
+            %   (x,y,t).
+            %
+            %   The calculation averages over the time
+            %   dimension to compute fluence-based centroids,
+            %   widths, and M-squared values.
             assert(size(obj.field,3) ~= 1, 'field must have 3 dimensions longer than 1 (x,y,t)');
 
             Exyt = obj.field; % 3 dimensional array of electric field; first dimension is x, second is y, third is time
@@ -219,25 +237,14 @@ classdef Msquared_class
         end
 
         function results = calculate(obj)
-            % Calculate M-squared beam quality, as well as some other quantities like
-            % centroid, second moment width, radius of curvature, angular width (second
-            % moment in k-space), and the second moment at focus. M-squared is one half of
-            % the sqrt of product of second moment at focus and angular width (Eq. 7.111
-            % on page 302 of book). See Chapter 7.7.2 of Crystal Nonlinear Optics: with SNLO
-            % examples (second edition). More details can be found at as-photonics.com/book
+            %calculate - Calculate M-squared and related beam quantities
+            %   RESULTS = calculate(OBJ) calculates M-squared and
+            %   related quantities for the field stored in
+            %   OBJ.field.
             %
-            % The electric field array can be a 2d array or a 3d array and is provided to
-            % this function as the as object property named 'field'. The 3rd dimension can
-            % be time, if you are calculating M-squared vs t, or z, if you are calculating
-            % M-squared through a crystal for instance. At each point in 3rd dimension,
-            % calculate M-squared, which requires the beam size at focal waist, and the
-            % second moment in k-space. We'll calculate the radius of curvature, beam size
-            % at focal waist, distance to focal waist, spatial centroid (and spatial
-            % angular centroid), spatial 2nd moment width (and spatial angular 2nd moment
-            % width). Note that the M-squared calculator does not handle huge curvatures
-            % that are non-spherical so we use a trick of repeatedly removing the
-            % spherical curvatures
-
+            %   The calculation removes spherical curvature
+            %   three times to improve accuracy, then computes
+            %   beam quality using the second-moment method.
             k0 = 2*pi/obj.wavelength;
             if isvector(obj.xgrid) || isvector(obj.ygrid)
                 % if xgrid and ygrid are provided as vectors, make meshgrids out of them:
@@ -437,9 +444,10 @@ classdef Msquared_class
         end % end calculate method
 
         function w = calculate_second_moment(obj)
-            % Find the second moment width of an electric field array; the calculation is
-            % presented in Equations 7.100 and 7.101 of book Crystal Nonlinear Optics:
-            % with SNLO examples (second edition) in chapter 7.7.2, page 300.
+            %calculate_second_moment - Calculate second moment beam widths
+            %   W = calculate_second_moment(OBJ) returns the second
+            %   moment beam widths W.WX and W.WY for the field in
+            %   OBJ.
             arguments
                 obj Msquared_class
             end
