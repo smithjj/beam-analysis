@@ -207,9 +207,10 @@ classdef Msquared
             M2_x_corrected          = sqrt(wx0squared_fl_corrected)*sqrt(wkxsquared_fl(1))/2; % Equation 7.120
             M2_y_corrected          = sqrt(wy0squared_fl_corrected)*sqrt(wkysquared_fl(1))/2;  % Equation 7.120
 
-            z0x                     = k0^2*wxsquared_fl./(Rx.*wkxsquared_fl); % distance of sample plane downstream from focus
-            z0y                     = k0^2*wysquared_fl./(Ry.*wkysquared_fl); % distance of sample plane downstream from focus
-
+            z0xp                    = k0^2*wxsquared_fl./(Rx.*wkxsquared_fl); % distance of sample plane downstream from focus
+            z0yp                    = k0^2*wysquared_fl./(Ry.*wkysquared_fl); % distance of sample plane downstream from focus
+            z0x                     = z0xp(1);
+            z0y                     = z0yp(1);
             % Collect all the results as data struct fields in the 'results' class property
             obj.results.pulse_M2_x      = M2_x_corrected;
             obj.results.pulse_M2_y      = M2_y_corrected;
