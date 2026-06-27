@@ -17,6 +17,11 @@ function compile_mex(profile)
         profile = false;
     end
 
+    outputDir = '+beam';
+    if ~exist(outputDir, 'dir')
+        mkdir(outputDir);
+    end
+
     %% Detect active compiler
     cfg = mex.getCompilerConfigurations('C++', 'Selected');
     if isempty(cfg)
@@ -67,7 +72,7 @@ function compile_mex(profile)
     movedNames = {};
     for i = 1:numel(sources)
         [~, base, ~] = fileparts(sources{i});
-        mexFile = [base, '.', mexext];
+        mexFile = fullfile(outputDir, [base, '.', mexext]);
         if exist(mexFile, 'file')
             backupName = sprintf('%s_backup_%s.%s', base, backupSuffix, mexext);
             copyfile(mexFile, backupName);
@@ -101,30 +106,30 @@ function compile_mex(profile)
         try
             if isMSVC
                 if useFFTW
-                    mex('-v', src, flags{:}, fftwLib, ...
+                    mex('-v', '-outdir', outputDir, src, flags{:}, fftwLib, ...
                         ['CXXOPTIMFLAGS=', thisCcFlags], ...
                         ['COPTIMFLAGS=',   thisCcFlags], ...
                         ['LDOPTIMFLAGS=',  ldFlags]);
                 else
-                    mex('-v', src, flags{:}, ...
+                    mex('-v', '-outdir', outputDir, src, flags{:}, ...
                         ['CXXOPTIMFLAGS=', thisCcFlags], ...
                         ['COPTIMFLAGS=',   thisCcFlags], ...
                         ['LDOPTIMFLAGS=',  ldFlags]);
                 end
             else
                 if useFFTW
-                    mex('-v', src, flags{:}, fftwLib, ...
+                    mex('-v', '-outdir', outputDir, src, flags{:}, fftwLib, ...
                         ['CXXOPTIMFLAGS=', thisCcFlags], ...
                         ['COPTIMFLAGS=',   thisCcFlags], ...
                         ['LDFLAGS=',       ldFlags]);
                 else
-                    mex('-v', src, flags{:}, ...
+                    mex('-v', '-outdir', outputDir, src, flags{:}, ...
                         ['CXXOPTIMFLAGS=', thisCcFlags], ...
                         ['COPTIMFLAGS=',   thisCcFlags], ...
                         ['LDFLAGS=',       ldFlags]);
                 end
             end
-            fprintf('  -> %s built successfully.\n', [fileparts(src), '.', mexext]);
+            fprintf('  -> %s built successfully.\n', mexFile);
         catch ME
             fprintf('  -> ERROR building %s:\n%s\n', src, ME.message);
             % Restore any moved originals so the repo is left in a usable state

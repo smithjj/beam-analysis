@@ -33,10 +33,10 @@ fprintf('=== Test field: Gaussian, FWHM=%.3f mm, R=%.0f mm, lambda=%.0f nm ===\n
 fprintf('--- TEST 1: Standard per-slice mode (single 2D slice) ---\n');
 
 % msquared_mex: field, xgrid, ygrid, wavelength
-r1 = msquared_mex(E2d, xmat, ymat, lambda);
+r1 = beam.msquared_mex(E2d, xmat, ymat, lambda);
 
 % msquared_calculate_mex: 'calculate', field, xgrid, ygrid, wavelength, power_threshold
-r2 = msquared_calculate_mex('calculate', E2d, xmat, ymat, lambda, 0);
+r2 = beam.msquared_calculate_mex('calculate', E2d, xmat, ymat, lambda, 0);
 
 % Fields common to BOTH outputs (17 fields)
 common_fields = {'M2_x','M2_y','Rx','Ry','wx0','wy0','xBar','yBar', ...
@@ -67,8 +67,8 @@ fprintf('  Fields in msquared_calculate_mex only: z0x2=%.6e, z0y2=%.6e\n\n', ...
 %% ========================================================================
 fprintf('--- TEST 2: Second-moment mode ---\n');
 
-s1 = msquared_mex(E2d, xmat, ymat, lambda, 'second_moment');
-s2 = msquared_calculate_mex('second_moment', E2d, xmat, ymat, lambda);
+s1 = beam.msquared_mex(E2d, xmat, ymat, lambda, 'second_moment');
+s2 = beam.msquared_calculate_mex('second_moment', E2d, xmat, ymat, lambda);
 
 fprintf('  %-12s  %18s  %18s  %12s  %12s\n', 'Field', 'msquared_mex', 'msqd_calc_mex', 'diff', 'rel diff');
 fprintf('  %s\n', repmat('-', 1, 80));
@@ -96,10 +96,10 @@ pulse_env = exp(-2 * log(2) * (tvec / FWHM_t).^2);
 E3d = E2d .* reshape(pulse_env, 1, 1, Nt);
 
 % msquared_mex 'pulse' mode — now returns plain field names (same as default)
-r3 = msquared_mex(E3d, xmat, ymat, lambda, 'pulse');
+r3 = beam.msquared_mex(E3d, xmat, ymat, lambda, 'pulse');
 
 % msquared_calculate_mex 'calculate' mode
-r4 = msquared_calculate_mex('calculate', E3d, xmat, ymat, lambda, 0);
+r4 = beam.msquared_calculate_mex('calculate', E3d, xmat, ymat, lambda, 0);
 
 % Verify no pulse_* names leak through in 'pulse' mode
 if isfield(r3, 'pulse_M2_x')
@@ -129,8 +129,8 @@ fprintf('  Max relative diff: %.3e\n\n', max_reldiff);
 %% ========================================================================
 fprintf('--- TEST 4: Pulse_flat mode (fluence-based) ---\n');
 
-rf1 = msquared_mex(E3d, xmat, ymat, lambda, 'pulse_flat');
-rf2 = msquared_calculate_mex('pulse_flat', E3d, xmat, ymat, lambda);
+rf1 = beam.msquared_mex(E3d, xmat, ymat, lambda, 'pulse_flat');
+rf2 = beam.msquared_calculate_mex('pulse_flat', E3d, xmat, ymat, lambda);
 
 % Common scalar fields
 scalar_fields = {'pulse_M2_x','pulse_M2_y','pulse_Rx','pulse_Ry', ...

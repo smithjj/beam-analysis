@@ -1,20 +1,20 @@
-%% Example: M^2 measurement of a Gaussian beam using msquared_mex
+%% Example2: M^2 measurement of a Gaussian beam using msquared_mex and Msquared
 %
-% Constructs a Gaussian transverse electric field with specified beam
-% diameter (FWHM) and radius of curvature, then calls msquared_mex to
-% compute the beam propagation parameters (M^2, waist, Rayleigh range, etc.)
+% Same beam construction as example_msquared.m, but computes the beam
+% parameters with both the MEX function and the native MATLAB class and
+% prints the two sets of numbers side-by-side for easy comparison.
 %
 % Grid:    3 mm x 3 mm, 128 x 128 points
 % Beam:    FWHM diameter = 0.750 mm,  R = 300 mm
 % Wavelength: 1064 nm (Nd:YAG)
 
 %% Physical parameters (all lengths in mm)
-epsilon_0 = 8.85e-12;           %vacuum permittivity
-c       = 3e8;                  % speed of light 
+epsilon_0 = 8.85e-12;           % vacuum permittivity
+c       = 3e8;                  % speed of light
 Lx      = 3.0e-3;               % grid side length [m]
 Nx      = 128;                  % points per side (total N x N)
 dx      = Lx / (Nx-1);          % x step [mm]
-Ly      = Lx;                   % just the same values
+Ly      = Lx;
 Ny      = Nx;
 dy      = dx;
 
@@ -36,7 +36,7 @@ fprintf('lambda:    %.0f nm\n', lambda*1e9);
 %  meshgrid internally with the correct orientation, or generate the 2
 %  meshgrid arrays. We'll do the second:
 xvec    = linspace(-Lx/2, Lx/2, Nx);  % vector of x positions, centered about 0
-yvec    = xvec; % 
+yvec    = xvec; %
 [ymat, xmat] = meshgrid(yvec, xvec);
 
 %% Construct Gaussian field:  E(x,y) = exp(-r^2/w^2) * exp(-i*k*r^2/(2R))
@@ -69,27 +69,44 @@ fprintf('Total power (after normalisation) = %.2f W\n', 0.5*epsilon_0*c*trapz(tr
 
 fprintf('\nRunning msquared_mex ...\n');
 tic;
-for K = 1:size(E,3)
-results = msquared_mex(E(:,:,K), xmat, ymat, lambda);
-end
-toc;
+results_mex = beam.msquared_mex(E, xmat, ymat, lambda);
+t_mex = toc;
 
-%% Display results
+%% Call Msquared
+fprintf('Running Msquared.calculate() ...\n');
+m2 = beam.Msquared();
+m2.field      = E;
+m2.xgrid      = xmat;
+m2.ygrid      = ymat;
+m2.wavelength = lambda;
+tic;
+results_class = m2.calculate();
+t_class = toc;
 
-fprintf('\n========== Beam analysis results ==========\n');
-fprintf('M^2_x:          %.4f\n',    results.M2_x);
-fprintf('M^2_y:          %.4f\n',    results.M2_y);
-fprintf('wx (1/e^2):     %.4f mm\n', results.wx*1e3);
-fprintf('wy (1/e^2):     %.4f mm\n', results.wy*1e3);
-fprintf('wx0 (waist):    %.4f mm\n', results.wx0*1e3);
-fprintf('wy0 (waist):    %.4f mm\n', results.wy0*1e3);
-fprintf('Rx:             %.1f mm\n', results.Rx*1e3);
-fprintf('Ry:             %.1f mm\n', results.Ry*1e3);
-fprintf('z0x (Rayleigh): %.2f mm\n', results.z0x*1e3);
-fprintf('z0y (Rayleigh): %.2f mm\n', results.z0y*1e3);
-fprintf('xBar centroid:  %.6f mm\n', results.xBar*1e3);
-fprintf('yBar centroid:  %.6f mm\n', results.yBar*1e3);
-fprintf('===========================================\n');
+%% Display results side-by-side
+
+fprintf('\n========== Beam analysis results (MEX vs Msquared) ==========\n');
+fprintf('Quantity          MEX                MATLAB class       Units\n');
+fprintf('%s\n', repmat('-', 1, 70));
+fprintf('M^2_x:            %.4f             %.4f\n',    results_mex.M2_x,    results_class.M2_x);
+fprintf('M^2_y:            %.4f             %.4f\n',    results_mex.M2_y,    results_class.M2_y);
+fprintf('wx (1/e^2):       %.4f mm          %.4f mm\n', results_mex.wx*1e3,  results_class.wx*1e3);
+fprintf('wy (1/e^2):       %.4f mm          %.4f mm\n', results_mex.wy*1e3,  results_class.wy*1e3);
+fprintf('wx0 (waist):      %.4f mm          %.4f mm\n', results_mex.wx0*1e3, results_class.wx0*1e3);
+fprintf('wy0 (waist):      %.4f mm          %.4f mm\n', results_mex.wy0*1e3, results_class.wy0*1e3);
+fprintf('Rx:               %.1f mm          %.1f mm\n', results_mex.Rx*1e3,  results_class.Rx*1e3);
+fprintf('Ry:               %.1f mm          %.1f mm\n', results_mex.Ry*1e3,  results_class.Ry*1e3);
+fprintf('z0x (Rayleigh):   %.2f mm          %.2f mm\n', results_mex.z0x*1e3, results_class.z0x*1e3);
+fprintf('z0y (Rayleigh):   %.2f mm          %.2f mm\n', results_mex.z0y*1e3, results_class.z0y*1e3);
+fprintf('xBar centroid:    %.6f mm        %.6f mm\n', results_mex.xBar*1e3, results_class.xBar*1e3);
+fprintf('yBar centroid:    %.6f mm        %.6f mm\n', results_mex.yBar*1e3, results_class.yBar*1e3);
+fprintf('kxBar centroid:   %.6f rad/mm     %.6f rad/mm\n', results_mex.kxBar*1e-3, results_class.kxBar*1e-3);
+fprintf('kyBar centroid:   %.6f rad/mm     %.6f rad/mm\n', results_mex.kyBar*1e-3, results_class.kyBar*1e-3);
+fprintf('wkx (angular):    %.6f rad/mm     %.6f rad/mm\n', results_mex.wkx*1e-3, results_class.wkx*1e-3);
+fprintf('wky (angular):    %.6f rad/mm     %.6f rad/mm\n', results_mex.wky*1e-3, results_class.wky*1e-3);
+fprintf('===================================================================\n');
+fprintf('MEX time:   %.4f s\n', t_mex);
+fprintf('Class time: %.4f s\n', t_class);
 
 %% Visualisation
 
@@ -144,8 +161,9 @@ grid on;
 %% Check: for an ideal Gaussian, M^2 = 1 and measured R should match
 
 fprintf('\nIdeal Gaussian check:\n');
-fprintf('  M^2 should be ~1:  M2_x = %.4f,  M2_y = %.4f\n', results.M2_x, results.M2_y);
-fprintf('  Measured R should be ~%.1f mm:  Rx = %.1f mm,  Ry = %.1f mm\n', ...
-    R*1e3, results.Rx*1e3, results.Ry*1e3);
-fprintf('  Measured w should be ~%.4f mm:  wx = %.4f mm,  wy = %.4f mm\n', ...
-    w*1e3, results.wx*1e3, results.wy*1e3);
+fprintf('  M^2 should be ~1:  M2_x = %.4f / %.4f,  M2_y = %.4f / %.4f\n', ...
+    results_mex.M2_x, results_class.M2_x, results_mex.M2_y, results_class.M2_y);
+fprintf('  Measured R should be ~%.1f mm:  Rx = %.1f / %.1f mm,  Ry = %.1f / %.1f mm\n', ...
+    R*1e3, results_mex.Rx*1e3, results_class.Rx*1e3, results_mex.Ry*1e3, results_class.Ry*1e3);
+fprintf('  Measured w should be ~%.4f mm:  wx = %.4f / %.4f mm,  wy = %.4f / %.4f mm\n', ...
+    w*1e3, results_mex.wx*1e3, results_class.wx*1e3, results_mex.wy*1e3, results_class.wy*1e3);

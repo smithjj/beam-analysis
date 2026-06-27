@@ -63,8 +63,7 @@ build_fftw() {
         return 1
     fi
     echo "==> Building $out (FFTW3 + OpenMP)"
-    mex "${MEX_FLAGS[@]}" -output "$out" "$src"
-    echo "    -> $REPO_DIR/$out.mexa64"
+    mex "${MEX_FLAGS[@]}" -outdir "$REPO_DIR/+beam" -output "$(basename "$out")" "$src"    echo "    -> $REPO_DIR/+beam/$out.mexa64"
 }
 
 build_matlab_fft() {
@@ -78,15 +77,12 @@ build_matlab_fft() {
     # No FFTW needed — uses mexCallMATLAB for FFTs.
     # -R2018a enables the modern C++ MEX API (mxComplexDouble, mxGetComplexDoubles).
     # Also needs -fopenmp in LDFLAGS because the source uses OpenMP pragmas.
-    mex "${MEX_FLAGS[@]}" -R2018a -output "$out" "$src"
-    echo "    -> $REPO_DIR/$out.mexa64"
+    mex "${MEX_FLAGS[@]}" -R2018a -outdir "$REPO_DIR/+beam" -output "$(basename "$out")" "$src"    echo "    -> $REPO_DIR/+beam/$out.mexa64"
 }
 
 clean_artifacts() {
     echo "==> Cleaning build artifacts"
-    rm -f msquared_mex.mexa64 msquared_mex.o \
-          msquared_calculate_mex.mexa64 msquared_calculate_mex.o
-    echo "    done"
+    rm -f +beam/msquared_mex.mexa64 +beam/msquared_mex.o \          +beam/msquared_calculate_mex.mexa64 +beam/msquared_calculate_mex.o    echo "    done"
 }
 
 check_deps() {
@@ -142,4 +138,4 @@ done
 
 echo
 echo "Build complete. Run the benchmark with:"
-echo "  matlab -batch 'addpath(pwd); benchmark_msquared(); exit'"
+echo "  matlab -batch 'addpath(pwd); addpath("+beam"); examples.benchmark_msquared(); exit'"

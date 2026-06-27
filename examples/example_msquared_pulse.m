@@ -107,7 +107,7 @@ fprintf('\nPulse energy: %.3f mJ (target %.0f mJ)\n', energy_check*1e3, pulse_en
 %
 fprintf('\nRunning msquared_mex (instantaneous mode) ...\n');
 tic;
-results = msquared_mex(E_pulsed, xv, yv, lambda, 'pulse');
+results = beam.msquared_mex(E_pulsed, xv, yv, lambda, 'pulse');
 toc;
 
 %% --- Display results ---
@@ -134,7 +134,7 @@ fprintf('=================================================\n');
 
 fprintf('\nRunning msquared_mex (fluence-based pulse_flat mode) ...\n');
 tic;
-results_flat = msquared_mex(E_pulsed, X2d, Y2d, lambda, 'pulse_flat');
+results_flat = beam.msquared_mex(E_pulsed, X2d, Y2d, lambda, 'pulse_flat');
 toc;
 
 fprintf('\n Fluence-based pulse analysis %s', newline);
