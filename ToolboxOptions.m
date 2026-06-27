@@ -21,8 +21,6 @@ function opts = ToolboxOptions()
     opts.Summary            = 'M-squared beam quality calculator with MEX accelerators';
     opts.Description        = 'Calculate the M-squared beam quality factor and related beam quantities for 2-D and 3-D electric-field arrays. Includes a reference MATLAB class (beam.Msquared) and compiled MEX accelerators (beam.msquared_mex and beam.msquared_calculate_mex).';
 
-    opts.ToolboxGettingStartedFile = fullfile(root, "GettingStarted.m");
-
     % Package output path
     opts.OutputFile = fullfile(root, "MsquaredToolbox.mltbx");
 end
