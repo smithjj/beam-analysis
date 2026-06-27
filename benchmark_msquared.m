@@ -1,6 +1,6 @@
 %% benchmark_msquared.m
 %
-% Quick scaling benchmark for msquared_mex vs Msquared_class.
+% Quick scaling benchmark for msquared_mex vs Msquared.
 % Builds Gaussian beams of varying grid size and slice count and reports
 % timings for the standard per-slice mode and pulse_flat mode.
 
@@ -49,7 +49,7 @@ function benchmark_msquared()
             %% Standard per-slice mode
             t_mex = timeit(@() msquared_mex(E_pulsed, xv, xv, lambda, 'pulse'), 1);
 
-            m2 = Msquared_class();
+            m2 = Msquared();
             m2.field = E_pulsed;
             m2.xgrid = xv;
             m2.ygrid = xv;

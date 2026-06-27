@@ -1,4 +1,4 @@
-%% Example2: Pulsed M^2 measurement using msquared_mex and Msquared_class
+%% Example2: Pulsed M^2 measurement using msquared_mex and Msquared
 %
 % Same beam/pulse construction as example_msquared_pulse.m, but computes
 % parameters with both the MEX function and the native MATLAB class and
@@ -109,9 +109,9 @@ tic;
 results_mex = msquared_mex(E_pulsed, xv, yv, lambda, 'pulse');
 t_mex = toc;
 
-% --- Msquared_class per-slice mode ---
-fprintf('Running Msquared_class.calculate() ...\n');
-m2 = Msquared_class();
+% --- Msquared per-slice mode ---
+fprintf('Running Msquared.calculate() ...\n');
+m2 = Msquared();
 m2.field      = E_pulsed;
 m2.xgrid      = X2d;          % 2-D ndgrid arrays (X varies in dim 1, Y in dim 2)
 m2.ygrid      = Y2d;
@@ -157,8 +157,8 @@ tic;
 results_flat_mex = msquared_mex(E_pulsed, X2d, Y2d, lambda, 'pulse_flat');
 t_flat_mex = toc;
 
-% --- Msquared_class pulse_flat mode ---
-fprintf('Running Msquared_class.calculate_pulse_flat() ...\n');
+% --- Msquared pulse_flat mode ---
+fprintf('Running Msquared.calculate_pulse_flat() ...\n');
 tic;
 results_flat_class = m2.calculate_pulse_flat();
 t_flat_class = toc;

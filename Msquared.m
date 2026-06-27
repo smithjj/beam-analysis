@@ -1,21 +1,21 @@
-%Msquared_class - Calculate M-squared beam quality of an electric field
-%   OBJ = Msquared_class creates an M-squared calculator with default
+%Msquared - Calculate M-squared beam quality of an electric field
+%   OBJ = Msquared creates an M-squared calculator with default
 %   spatial grids and empty field.
 %
-%   OBJ = Msquared_class(Name=VALUE) specifies one or more properties
+%   OBJ = Msquared(Name=VALUE) specifies one or more properties
 %   using name-value arguments.
 %
-%   Msquared_class calculates the M-squared beam quality factor and
+%   Msquared calculates the M-squared beam quality factor and
 %   related quantities for 2D (x,y) or 3D (x,y,z or x,y,t) electric
 %   fields. The calculation follows the method in Chapter 7.7 of
 %   Crystal Nonlinear Optics: with SNLO examples (second edition).
 %
-%   Msquared_class functions:
+%   Msquared functions:
 %       calculate                    - Calculate M-squared and beam quantities
 %       calculate_pulse_flat         - Fluence-based analysis for pulsed beams
 %       calculate_second_moment      - Calculate second moment beam widths
 %
-%   Msquared_class properties:
+%   Msquared properties:
 %       xgrid           - X position matrix (m)
 %       ygrid           - Y position matrix (m)
 %       field           - Electric field array (V/m)
@@ -37,7 +37,7 @@
 %   See also fft2, fftshift, meshgrid
 
 
-classdef Msquared_class
+classdef Msquared
 
     properties
         %  x position matrix (2d) units m
@@ -449,7 +449,7 @@ classdef Msquared_class
             %   moment beam widths W.WX and W.WY for the field in
             %   OBJ.
             arguments
-                obj Msquared_class
+                obj Msquared
             end
             if ~(isvector(obj.xgrid) || ismatrix(obj.xgrid))
 %                 error('xgrid must be a vector or matrix; is has %i dimensions and size %s', ndims(obj.xgrid));

@@ -1,6 +1,6 @@
 /* msquared_mex.cpp
- * MEX drop-in replacement for Msquared_class.calculate() and
- * Msquared_class.calculate_pulse_flat().
+ * MEX drop-in replacement for Msquared.calculate() and
+ * Msquared.calculate_pulse_flat().
  *
  * Usage:
  *   results = msquared_mex(field, xgrid, ygrid, wavelength)
@@ -303,7 +303,7 @@ static SliceResult compute_slice(const cdouble* Exy, const cdouble* Ek,
     return r;
 }
 
-/* Fluence-based pulse analysis (Msquared_class.calculate_pulse_flat).
+/* Fluence-based pulse analysis (Msquared.calculate_pulse_flat).
  * Computes M^2, RoC, waist, etc. from the time-integrated fluence.
  * All outputs are scalars (single value for the whole pulse).
  */
@@ -647,7 +647,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         }
     }
 
-    /* Build meshgrid. Msquared_class expects:
+    /* Build meshgrid. Msquared expects:
      *   xgrid varies in 1st dim (constant in 2nd)
      *   ygrid varies in 2nd dim (constant in 1st)
      * Standard MATLAB meshgrid(xvec, yvec) gives the opposite.

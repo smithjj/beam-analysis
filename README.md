@@ -1,12 +1,12 @@
 # M² Beam Quality Calculator (MEX + MATLAB Class)
 
-This directory contains a drop-in MEX replacement for `Msquared_class.calculate()` and `Msquared_class.calculate_pulse_flat()`, plus example scripts and regression tests.
+This directory contains a drop-in MEX replacement for `Msquared.calculate()` and `Msquared.calculate_pulse_flat()`, plus example scripts and regression tests.
 
 ## Files
 
 | File | Description |
 |------|-------------|
-| `Msquared_class.m` | Original MATLAB reference implementation (Arlee Smith / AS-Photonics). |
+| `Msquared.m` | Original MATLAB reference implementation (Arlee Smith / AS-Photonics). |
 | `msquared_mex.cpp` | C++ MEX source implementing the same algorithms. |
 | `msquared_mex.mexw64` | Compiled MEX binary (Windows x64). |
 | `example_msquared.m` | CW Gaussian beam example. |
@@ -52,7 +52,7 @@ Fast path that computes only the spatial second-moment widths. Returns a struct 
 results = msquared_mex(field, xgrid, ygrid, wavelength, 'pulse');
 ```
 
-Identical to the default per-slice analysis above. The string `'pulse'` is accepted as a convenience alias, and output field names are **not** prefixed with `pulse_` — they match `Msquared_class.calculate()` (`M2_x`, `wx`, `z0x`, `flattened_Exyz`, etc.).
+Identical to the default per-slice analysis above. The string `'pulse'` is accepted as a convenience alias, and output field names are **not** prefixed with `pulse_` — they match `Msquared.calculate()` (`M2_x`, `wx`, `z0x`, `flattened_Exyz`, etc.).
 
 ### Fluence-based pulse analysis
 
@@ -62,7 +62,7 @@ results = msquared_mex(field, xgrid, ygrid, wavelength, 'pulse_flat');
 results = msquared_mex(field, xgrid, ygrid, wavelength, 'calculate_pulse_flat');
 ```
 
-This implements `Msquared_class.calculate_pulse_flat()`: it time-integrates the fluence first, then computes a **single scalar** M² for the whole pulse. Output field names are prefixed with `pulse_`, but they are scalars (not arrays), except for `pulse_flattened_Exyt` which remains `Nx*Ny × Nt`.
+This implements `Msquared.calculate_pulse_flat()`: it time-integrates the fluence first, then computes a **single scalar** M² for the whole pulse. Output field names are prefixed with `pulse_`, but they are scalars (not arrays), except for `pulse_flattened_Exyt` which remains `Nx*Ny × Nt`.
 
 ## Running the Tests
 
@@ -127,9 +127,9 @@ fprintf('Total: %d passed, %d failed, %d incomplete\n', ...
    Second-moment M² is sensitive to truncation. Displacing a beam near the grid edge or using a very tight radius of curvature can raise M² above 1 even for an otherwise ideal Gaussian. The tests account for this by checking agreement between MEX and class and by verifying values remain finite and reasonable, rather than demanding exactly M² = 1 in those regimes.
 
 3. **MEX vs class field-name convention.**
-   - `Msquared_class.calculate()` always returns fields named `M2_x`, `M2_y`, `wx`, etc., regardless of whether the input is 2-D or 3-D.
+   - `Msquared.calculate()` always returns fields named `M2_x`, `M2_y`, `wx`, etc., regardless of whether the input is 2-D or 3-D.
    - `msquared_mex` returns `M2_x`, `M2_y`, … for 2-D, unflagged 3-D, or 3-D input with `'pulse'`.
-   - `'pulse_flat'` uses the same `pulse_` prefixed names as `Msquared_class.calculate_pulse_flat()`. Note that `msquared_mex` computes a scalar Rayleigh range there, while the class returns a 3-element per-pass propagation parameter.
+   - `'pulse_flat'` uses the same `pulse_` prefixed names as `Msquared.calculate_pulse_flat()`. Note that `msquared_mex` computes a scalar Rayleigh range there, while the class returns a 3-element per-pass propagation parameter.
    - `msquared_calculate_mex` mirrors the class exactly and includes extra fields `z0x2` and `z0y2` that `msquared_mex` omits.
 
 ## Current Status

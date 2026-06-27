@@ -1,4 +1,4 @@
-%% Example2: M^2 measurement of a Gaussian beam using msquared_mex and Msquared_class
+%% Example2: M^2 measurement of a Gaussian beam using msquared_mex and Msquared
 %
 % Same beam construction as example_msquared.m, but computes the beam
 % parameters with both the MEX function and the native MATLAB class and
@@ -72,9 +72,9 @@ tic;
 results_mex = msquared_mex(E, xmat, ymat, lambda);
 t_mex = toc;
 
-%% Call Msquared_class
-fprintf('Running Msquared_class.calculate() ...\n');
-m2 = Msquared_class();
+%% Call Msquared
+fprintf('Running Msquared.calculate() ...\n');
+m2 = Msquared();
 m2.field      = E;
 m2.xgrid      = xmat;
 m2.ygrid      = ymat;
@@ -85,7 +85,7 @@ t_class = toc;
 
 %% Display results side-by-side
 
-fprintf('\n========== Beam analysis results (MEX vs Msquared_class) ==========\n');
+fprintf('\n========== Beam analysis results (MEX vs Msquared) ==========\n');
 fprintf('Quantity          MEX                MATLAB class       Units\n');
 fprintf('%s\n', repmat('-', 1, 70));
 fprintf('M^2_x:            %.4f             %.4f\n',    results_mex.M2_x,    results_class.M2_x);

@@ -1,13 +1,13 @@
 /*
  * msquared_calculate_mex.cpp
  *
- * MEX replacement for the Msquared_class MATLAB class.  Implements the three
+ * MEX replacement for the Msquared MATLAB class.  Implements the three
  * public methods:
  *   'calculate'            -> results struct for M2 vs z/t
  *   'calculate_pulse_flat' -> results struct for fluence-based pulse-averaged M2
  *   'calculate_second_moment' -> simple x-y second-moment widths
  *
- * The mathematics is duplicated from Msquared_class.m (Arlee Smith,
+ * The mathematics is duplicated from Msquared.m (Arlee Smith,
  * Crystal Nonlinear Optics, chapter 7.7).
  *
  * FFTs are delegated back to MATLAB via mexCallMATLAB, so the MEX file only
