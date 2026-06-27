@@ -18,19 +18,9 @@ function opts = ToolboxOptions()
     opts.AuthorName         = "Jesse Smith";
     opts.AuthorEmail        = "jesse.smith@as-photonics.com";
     opts.AuthorCompany      = "AS-Photonics";
-    opts.Summary            = "M-squared beam quality calculator with MEX accelerators";
-    opts.Description        = "Calculate the M-squared beam quality factor and related " + ...
-                              "beam quantities for 2-D and 3-D electric-field arrays. " + ...
-                              "Includes a reference MATLAB class (beam.Msquared) and " + ...
-                              "compiled MEX accelerators (beam.msquared_mex and " + ...
-                              "beam.msquared_calculate_mex).";
-    opts.MinimumMatlabRelease = "R2020b";
-    opts.Platforms          = [];
-    opts.SupportedOperations  = ...
-        struct(Install = true, Download = true, Update = true, Query = true);
+    opts.Summary            = 'M-squared beam quality calculator with MEX accelerators';
+    opts.Description        = 'Calculate the M-squared beam quality factor and related beam quantities for 2-D and 3-D electric-field arrays. Includes a reference MATLAB class (beam.Msquared) and compiled MEX accelerators (beam.msquared_mex and beam.msquared_calculate_mex).';
 
-    % Include the top-level README as toolbox documentation.
-    % MATLAB will pick up Contents.m and GettingStarted.m automatically.
     opts.ToolboxGettingStartedFile = fullfile(root, "GettingStarted.m");
 
     % Package output path
