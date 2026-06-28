@@ -20,6 +20,12 @@ function compile_mex(profile)
     end
 
     %% Linux / WSL: build via system mex (shell-mode respects CXXOPTIMFLAGS)
+    %
+    % Default: no direct FFTW; uses mexCallMATLAB("fft2") which gets MATLAB's
+    % MKL.  On WSL2 this is ~1.5x, while direct FFTW is also ~1.5x but adds a
+    % library dependency, so MKL is the simpler default.
+    %
+    % To benchmark direct FFTW, uncomment the USE_FFTW block below.
     if isunix && ~ismac
         repoDir = fileparts(mfilename('fullpath'));
         outputDir = fullfile(repoDir, '+beam');
@@ -27,7 +33,13 @@ function compile_mex(profile)
             mkdir(outputDir);
         end
 
+        % --- Default MKL build ---
         ccFlags = '-O3 -march=native -ffast-math -funroll-loops -fopenmp -DNDEBUG';
+
+        % --- Optional FFTW benchmark build ---
+        % ccFlags = '-O3 -march=native -ffast-math -funroll-loops -fopenmp -DNDEBUG -DUSE_FFTW';
+        % fftwLib = fullfile(matlabroot, 'bin', 'glnxa64', 'libmwfftw3.so');
+
         if profile
             ccFlags = [ccFlags, ' -DMEX_PROFILE'];
             fprintf('Profiling enabled.\n');
@@ -42,9 +54,11 @@ function compile_mex(profile)
             '-output msquared_mex ' ...
             'msquared_mex.cpp'];
 
-        fprintf('Linux/WSL detected — building with mex (g++, FFTW3 + OpenMP)...\n');
+        % If FFTW is uncommented, also append LINKLIBS to cmd above:
+        % cmd = [cmd, ' LINKLIBS="$LINKLIBS -l:' fftwLib '" '];
+
+        fprintf('Linux/WSL detected — building with mex (g++, MKL fft2 + OpenMP)...\n');
         fprintf('C/C++ optimization flags: %s\n', ccFlags);
-        fprintf('Command: %s\n', cmd);
         [status, result] = system(cmd);
         fprintf('%s', result);
         if status ~= 0

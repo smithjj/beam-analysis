@@ -4,12 +4,14 @@
 #
 # Compiles:
 #   msquared_mex.cpp  -> msquared_mex.mexa64
-#       Uses OpenMP + MATLAB's MKL-backed fft2 via mexCallMATLAB.
-#       (Benchmarks show MKL outperforms system FFTW3 on WSL for this workload.)
+#       Default: OpenMP + MATLAB's MKL-backed fft2 via mexCallMATLAB.
+#       (Benchmarks showed this gives ~1.5x speedup on WSL, vs ~4x on native
+#        Windows with direct FFTW. WSL2 virtualization overhead negates the
+#        benefit of direct FFTW for this workload.)
 #
 # Usage:
-#   ./compile_wsl.sh                  # build all
-#   ./compile_wsl.sh msquared_mex     # build only msquared_mex
+#   ./compile_wsl.sh                  # build default (MKL fft2)
+#   ./compile_wsl.sh fftw             # build with MATLAB's libmwfftw3.so
 #   ./compile_wsl.sh clean            # remove built artifacts
 #
 # Target CPU: tuned for 12th Gen Intel Core (Alder Lake), e.g. i7-12700H.
@@ -31,18 +33,15 @@ set -euo pipefail
 #   -fopenmp               OpenMP runtime. MUST also be in LDFLAGS below,
 #                           otherwise you get undefined refs to omp_get_*.
 #   -DNDEBUG               Strip assert() overhead.
-#
-#   (FFTW3 libraries are NOT linked on WSL/Linux; benchmarks showed
-#    MATLAB's MKL-backed fft2 outperforms system libfftw3 for this
-#    workload.  FFTW3 is still available on Windows via compile_mex.m.)
 # ---------------------------------------------------------------------------
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$REPO_DIR"
 
-# CXXOPTIMFLAGS is picked up by `mex` for compile only.
-# LDFLAGS must include -fopenmp so the linker resolves omp_get_* / GOMP_*.
-# LINKLIBS picks up the FFTW libraries.
+# ---------------------------------------------------------------------------
+# DEFAULT build: no direct FFTW; uses mexCallMATLAB("fft2") which gets
+# MATLAB's MKL.  Good enough on WSL (~1.5x peak), simpler, no library deps.
+# ---------------------------------------------------------------------------
 read -r -d '' CXXOPTIMFLAGS <<'EOF' || true
 -O3 -march=native -ffast-math -funroll-loops -fopenmp -DNDEBUG
 EOF
@@ -52,6 +51,23 @@ MEX_FLAGS=(
     "LDFLAGS=\$LDFLAGS -fopenmp"
 )
 
+# ---------------------------------------------------------------------------
+# OPTIONAL FFTW build (commented out by default):
+# Uncomment the block below to link MATLAB's own libmwfftw3.so for direct
+# FFT access.  On native Windows this gives ~4x; on WSL2 it gives only
+# ~1.5x (same as MKL), so it's kept here for benchmarking only.
+# ---------------------------------------------------------------------------
+# read -r -d '' CXXOPTIMFLAGS <<'EOF' || true
+# -O3 -march=native -ffast-math -funroll-loops -fopenmp -DNDEBUG -DUSE_FFTW
+# EOF
+# MATLAB_ROOT="$(dirname "$(dirname "$(readlink -f "$(which matlab)")")")"
+# FFTW_LIB="$MATLAB_ROOT/bin/glnxa64/libmwfftw3.so"
+# MEX_FLAGS=(
+#     "CXXOPTIMFLAGS=$CXXOPTIMFLAGS"
+#     "LDFLAGS=\$LDFLAGS -fopenmp"
+#     "LINKLIBS=\$LINKLIBS $FFTW_LIB"
+# )
+
 build_mex() {
     local src="msquared_mex.cpp"
     local out="msquared_mex"
@@ -59,7 +75,11 @@ build_mex() {
         echo "ERROR: $src not found in $REPO_DIR" >&2
         return 1
     fi
-    echo "==> Building $out (OpenMP, MATLAB fft2 fallback)"
+    local mode="MKL fft2 via mexCallMATLAB"
+    if echo "${CXXOPTIMFLAGS:-}" | grep -q USE_FFTW; then
+        mode="MATLAB libmwfftw3.so direct FFT"
+    fi
+    echo "==> Building $out ($mode + OpenMP)"
     mex "${MEX_FLAGS[@]}" -outdir "$REPO_DIR/+beam" -output "$(basename "$out")" "$src"
     echo "    -> $REPO_DIR/+beam/$out.mexa64"
 }
@@ -78,16 +98,11 @@ check_deps() {
             missing=1
         fi
     done
-    if ! ldconfig -p 2>/dev/null | grep -q libfftw3.so; then
-        echo "ERROR: libfftw3 not found. Install with:" >&2
-        echo "  sudo apt install libfftw3-dev libfftw3-omp3" >&2
-        missing=1
-    fi
     return $missing
 }
 
 usage() {
-    sed -n '2,12p' "$0"
+    sed -n '2,14p' "$0"
 }
 
 # ---------------------------------------------------------------------------
@@ -111,10 +126,10 @@ fi
 
 for t in "${targets[@]}"; do
     case "$t" in
-        msquared_mex)   build_mex ;;
+        msquared_mex|fftw)   build_mex ;;
         *)
             echo "ERROR: unknown target '$t'" >&2
-            echo "Valid targets: msquared_mex, clean" >&2
+            echo "Valid targets: msquared_mex, fftw, clean" >&2
             exit 1
             ;;
     esac
@@ -122,4 +137,4 @@ done
 
 echo
 echo "Build complete. Run the benchmark with:"
-echo "  matlab -batch 'addpath(pwd); addpath("+beam"); examples.benchmark_msquared(); exit'"
+echo "  matlab -batch 'addpath(pwd); addpath(+beam\"); examples.benchmark_msquared(); exit'"
