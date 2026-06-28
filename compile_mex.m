@@ -19,6 +19,115 @@ function compile_mex(profile)
         profile = false;
     end
 
+    %% macOS: build via system mex (Apple Clang, MATLAB's bundled libomp
+    %  + libmwfftw3.dylib).
+    %
+    %  Mirrors the Linux/WSL block: uses shell-mode mex so CXXOPTIMFLAGS
+    %  is passed through reliably.  The configured C++ compiler is whatever
+    %  `mex -setup C++` selected (Apple Clang by default on R2023b+).
+    %
+    %  OpenMP notes:
+    %   * Apple Clang 16+ removed the `-fopenmp` driver flag.  We pass the
+    %     LLVM frontend flag directly via `-Xclang -fopenmp`.
+    %   * MATLAB R2023b+ ships its own libomp.dylib and omp.h; we link
+    %     those (no Homebrew / Xcode CLT libomp dependency).  If a
+    %     particular MATLAB install lacks the bundled libomp, we fall back
+    %     to a no-OpenMP build with a warning.
+    %
+    %  FFTW: linked directly from MATLAB's runtime dylib; -Wl,-rpath
+    %  embeds the search path so the .mexmaca64 / .mexmaci64 loads without
+    %  DYLD_LIBRARY_PATH gymnastics at run time.
+    %
+    %  Detects both Apple Silicon (maca64) and Intel (maci64) MATLAB.
+    if ismac
+        repoDir = fileparts(mfilename('fullpath'));
+        outputDir = fullfile(repoDir, '+beam');
+        if ~exist(outputDir, 'dir')
+            mkdir(outputDir);
+        end
+
+        arch = computer('arch');   % 'maca64' on Apple Silicon, 'maci64' on Intel
+
+        % --- Locate MATLAB's bundled libomp (optional) and libmwfftw3 (required) ---
+        ompInclude = fullfile(matlabroot, 'toolbox', 'eml', ...
+                              'externalDependency', 'omp', arch, 'include');
+        ompLib     = fullfile(matlabroot, 'bin', arch, 'libomp.dylib');
+        fftwLib    = fullfile(matlabroot, 'bin', arch, 'libmwfftw3.dylib');
+
+        if ~exist(fftwLib, 'file')
+            error('MATLAB FFTW dylib not found: %s', fftwLib);
+        end
+
+        hasOmp = exist(ompLib, 'file') == 2 && exist(ompInclude, 'dir') == 7;
+        if ~hasOmp
+            warning('compile_mex:noOMP', ...
+                'MATLAB libomp not found at %s; building without OpenMP.', ompLib);
+        end
+
+        % Both libomp (when present) and libmwfftw3 live under
+        % <matlabroot>/bin/<arch>, so a single rpath covers both.
+        rpathArg = sprintf('-Wl,-rpath,%s', fileparts(fftwLib));
+
+        % Clang on macOS accepts the same -ffast-math family as GCC;
+        % -march=native resolves to the host armv8.x variant (or x86_64 on
+        % Intel Macs).  -funroll-loops is a no-op for Clang (default) but
+        % kept for symmetry with the Linux build.
+        ccFlags = '-O3 -march=native -ffast-math -funroll-loops -DNDEBUG';
+
+        if hasOmp
+            ccFlags = [ccFlags, ' -Xclang -fopenmp'];
+        end
+
+        if profile
+            ccFlags = [ccFlags, ' -DMEX_PROFILE'];
+            fprintf('Profiling enabled.\n');
+        end
+
+        % On macOS, a user-set LDFLAGS env var REPLACES the mexopts' default
+        % LDFLAGS (unlike Linux, where it merges).  The mexopts' default
+        % supplies -bundle (critical: makes ld produce a Mach-O bundle
+        % rather than an executable expecting _main) and -stdlib=libc++
+        % (the source is C++), so we re-add them explicitly here.
+        if hasOmp
+            ompIncludeArg = ['-I' ompInclude];
+            ompLinkArg    = ['-bundle -stdlib=libc++ -L' fileparts(ompLib) ' -lomp'];
+            cxxFlagsEnv   = ['CXXFLAGS="$CXXFLAGS ' ompIncludeArg '" '];
+            ldFlagsEnv    = ['LDFLAGS="$LDFLAGS ' ompLinkArg ' ' rpathArg '" '];
+        else
+            cxxFlagsEnv   = '';
+            ldFlagsEnv    = ['LDFLAGS="$LDFLAGS -bundle -stdlib=libc++ ' rpathArg '" '];
+        end
+
+        % Use the absolute path to mex — on macOS MATLAB is normally launched
+        % from the GUI and isn't on the user's shell PATH, so a bare `mex`
+        % here would fail with "command not found" under zsh/bash.
+        mexBin = fullfile(matlabroot, 'bin', arch, 'mex');
+        cmd = ['cd "' repoDir '" && "' mexBin '" ' ...
+            cxxFlagsEnv ...
+            'CXXOPTIMFLAGS="' ccFlags '" ' ...
+            'COPTIMFLAGS="'   ccFlags '" ' ...
+            ldFlagsEnv ...
+            '-outdir "+beam" ' ...
+            '-output msquared_mex ' ...
+            'msquared_mex.cpp ' ...
+            fftwLib];
+
+        if hasOmp
+            fprintf('macOS detected — building with mex (%s, libmwfftw3 + libomp)...\n', arch);
+        else
+            fprintf('macOS detected — building with mex (%s, libmwfftw3, no OpenMP)...\n', arch);
+        end
+        fprintf('C/C++ optimization flags: %s\n', ccFlags);
+        fprintf('FFTW library: %s\n', fftwLib);
+        [status, result] = system(cmd);
+        fprintf('%s', result);
+        if status ~= 0
+            error('mex exited with code %d', status);
+        end
+        fprintf('Build complete.\n');
+        return;
+    end
+
     %% Linux / WSL: build via system mex (shell-mode respects CXXOPTIMFLAGS)
     %
     % Default: no direct FFTW; uses mexCallMATLAB("fft2") which gets MATLAB's
