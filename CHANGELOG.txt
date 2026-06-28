@@ -1,0 +1,44 @@
+Changelog for Msquared Toolbox
+==============================
+
+Version 1.0.2 — 28 Jun 2026
+---------------------------
+Fixed
+  - Fixed flattened_Exyz shape: now returns 3D Nx×Ny×N3 array
+    matching beam.Msquared().calculate() (was incorrectly 2D).
+  - Fixed msquared_auto.m: exist() returns 0 for namespaced MEX
+    files; now uses which() to correctly detect compiled binaries.
+    Previously caused silent class fallback = zero speedup.
+
+Build
+  - compile_mex.m now supports Windows, Linux/WSL, and macOS.
+  - WSL/Linux default uses MKL via mexCallMATLAB (simpler, no
+    extra lib deps; ~1.5x speedup). FFTW path kept as commented
+    option for benchmarking.
+  - Windows uses direct FFTW via libmwfftw3.lib (~4x speedup).
+  - Ships .mexw64 in .mltbx for Windows out-of-box use. macOS
+    and Linux users run compile_mex after install.
+  - Source moved to +beam/private/msquared_mex.cpp.
+
+Docs
+  - README updated with platform-specific FFT paths.
+  - All examples use msquared_auto.m for graceful fallback.
+  - New benchmark_fftw_sweep.m for Nt sweep analysis.
+
+Version 1.0.1 — 28 Jun 2026
+---------------------------
+Fixed
+  - Fixed pulse_flat z0x/z0y sign and formula to match MATLAB
+    class (now uses k0^2*wxsq/(Rx[0]*wkxsq) etc).
+
+Removed
+  - Removed msquared_calculate_mex.cpp and all references.
+    All functionality consolidated into msquared_mex.cpp.
+
+Version 1.0.0 — 27 Jun 2026
+---------------------------
+Initial release
+  - beam.Msquared reference class (per-slice and fluence-based).
+  - beam.msquared_mex MEX accelerator (per-slice, pulse_flat,
+    second_moment modes).
+  - FFTW batched 2D transforms with OpenMP spatial loops.

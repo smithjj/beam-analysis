@@ -1,5 +1,5 @@
 % Msquared Toolbox
-% Version 1.0.0  27-Jun-2026
+% Version 1.0.2  28-Jun-2026
 %
 % Files and folders
 %   +beam                       - Namespace package containing class and MEX
