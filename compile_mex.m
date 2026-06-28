@@ -6,15 +6,53 @@
 % Example:
 %   >> compile_mex
 %
-% The script detects the active C++ compiler and selects appropriate flags:
-%   - Microsoft Visual C++ 2022: /O2 /openmp /arch:AVX2 /fp:fast /DNDEBUG
-%   - MinGW-w64:                 -O3 -march=native -fopenmp -ffast-math -DNDEBUG
+% Platform auto-detection:
+%   - Windows (MSVC or MinGW): compiles directly in MATLAB with
+%     optimized C++ flags and links MATLAB's FFTW library.
+%   - Linux / WSL: compiles directly in MATLAB with g++,
+%     system FFTW3, OpenMP, and native AVX2.
 %
-% The existing .mexw64 files are backed up before overwriting.
+% The existing binaries are backed up before overwriting.
 
 function compile_mex(profile)
     if nargin < 1
         profile = false;
+    end
+
+    %% Linux / WSL: build via system mex (shell-mode respects CXXOPTIMFLAGS)
+    if isunix && ~ismac
+        repoDir = fileparts(mfilename('fullpath'));
+        outputDir = fullfile(repoDir, '+beam');
+        if ~exist(outputDir, 'dir')
+            mkdir(outputDir);
+        end
+
+        ccFlags = '-O3 -march=native -ffast-math -funroll-loops -fopenmp -DNDEBUG -DUSE_FFTW';
+        if profile
+            ccFlags = [ccFlags, ' -DMEX_PROFILE'];
+            fprintf('Profiling enabled.\n');
+        end
+
+        % Shell-mode mex is the only reliable way to override CXXOPTIMFLAGS on Linux
+        cmd = ['cd "' repoDir '" && mex ' ...
+            'CXXOPTIMFLAGS="' ccFlags '" ' ...
+            'COPTIMFLAGS="' ccFlags '" ' ...
+            'LDFLAGS="$LDFLAGS -fopenmp" ' ...
+            'LINKLIBS="$LINKLIBS -lfftw3_omp -lfftw3" ' ...
+            '-outdir "+beam" ' ...
+            '-output msquared_mex ' ...
+            'msquared_mex.cpp'];
+
+        fprintf('Linux/WSL detected — building with mex (g++, FFTW3 + OpenMP)...\n');
+        fprintf('C/C++ optimization flags: %s\n', ccFlags);
+        fprintf('Command: %s\n', cmd);
+        [status, result] = system(cmd);
+        fprintf('%s', result);
+        if status ~= 0
+            error('mex exited with code %d', status);
+        end
+        fprintf('Build complete.\n');
+        return;
     end
 
     outputDir = '+beam';

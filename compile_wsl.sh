@@ -43,7 +43,7 @@ cd "$REPO_DIR"
 # LDFLAGS must include -fopenmp so the linker resolves omp_get_* / GOMP_*.
 # LINKLIBS picks up the FFTW libraries.
 read -r -d '' CXXOPTIMFLAGS <<'EOF' || true
--O3 -march=native -ffast-math -funroll-loops -fopenmp -DNDEBUG
+-O3 -march=native -ffast-math -funroll-loops -fopenmp -DNDEBUG -DUSE_FFTW
 EOF
 
 MEX_FLAGS=(

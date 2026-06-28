@@ -42,6 +42,8 @@
 
 #ifdef USE_FFTW
 #include "fftw3.h"
+#include <string>
+#include <sys/stat.h>
 #endif
 
 #ifdef MEX_PROFILE
@@ -113,11 +115,56 @@ static void fftshift2_real(double* arr, mwSize Nx, mwSize Ny) {
 }
 
 #ifdef USE_FFTW
+/* Return a stable path for FFTW wisdom caching.
+ * On Linux/WSL:  $HOME/.cache/fftw/msquared_wisdom
+ * Falls back to /tmp if HOME is unset. */
+static const char* fftw_wisdom_path() {
+    static std::string path;
+    if (path.empty()) {
+        const char* home = getenv("HOME");
+        if (home) {
+            path = std::string(home) + "/.cache/fftw/msquared_wisdom";
+        } else {
+            path = "/tmp/msquared_fftw_wisdom";
+        }
+    }
+    return path.c_str();
+}
+
+/* In-memory FFTW wisdom cache.  Plans are accumulated in a static
+ * std::string so there is zero disk I/O.  Wisdom survives MEX reloads
+ * within the same MATLAB process because we import it on every entry. */
+static std::string& fftw_wisdom_string() {
+    static std::string s;
+    return s;
+}
+
+static void fftw_import_wisdom_string() {
+    const std::string& s = fftw_wisdom_string();
+    if (!s.empty()) {
+        fftw_import_wisdom_from_string(s.c_str());
+    }
+}
+
+static void fftw_export_wisdom_string() {
+    char* str = fftw_export_wisdom_to_string();
+    if (str) {
+        fftw_wisdom_string() = str;   // copy into std::string
+        fftw_free(str);
+    }
+}
+
 /* In-place batched 2-D complex FFT using MATLAB's libmwfftw3.
  * Data is stored in MATLAB column-major order with logical dimensions
  * Nx (1st dim) x Ny (2nd dim).  We pass {Ny, Nx} to FFTW so that the
- * contiguous dimension (Nx) is the last/fastest one. */
+ * contiguous dimension (Nx) is the last/fastest one.
+ *
+ * On first call for a given geometry FFTW creates a plan (ESTIMATE is
+ * fast).  The plan metadata is exported to an in-memory string so that
+ * later calls — even after clear mex — can reuse it without any disk
+ * access. */
 static void fftw_batch_2d(cdouble* data, mwSize Nx, mwSize Ny, mwSize Nt) {
+    fftw_import_wisdom_string();
     int n[2] = { static_cast<int>(Ny), static_cast<int>(Nx) };
     int np = static_cast<int>(Nx * Ny);
     int howmany = static_cast<int>(Nt);
@@ -130,6 +177,7 @@ static void fftw_batch_2d(cdouble* data, mwSize Nx, mwSize Ny, mwSize Nt) {
     }
     fftw_execute(plan);
     fftw_destroy_plan(plan);
+    fftw_export_wisdom_string();
 }
 #endif
 
@@ -589,11 +637,9 @@ static void compute_pulse_flat(
     M2x = std::sqrt(wx0sq) * std::sqrt(wkxsq) / 2.0;
     M2y = std::sqrt(wy0sq) * std::sqrt(wkysq) / 2.0;
 
-    /* Rayleigh range */
-    double wx_diff = wx_out * wx_out - wx0_out * wx0_out;
-    double wy_diff = wy_out * wy_out - wy0_out * wy0_out;
-    z0x = (wx_diff > 0) ? M_PI * wx0_out / (M2x * wavelength) * std::sqrt(wx_diff) : 0;
-    z0y = (wy_diff > 0) ? M_PI * wy0_out / (M2y * wavelength) * std::sqrt(wy_diff) : 0;
+    /* Rayleigh range — matches MATLAB class calculate_pulse_flat */
+    z0x = k0 * k0 * wxsq / (Rx_vals[0] * wkxsq);
+    z0y = k0 * k0 * wysq / (Ry_vals[0] * wkysq);
 
     /* Flattened field */
     if (flattened_out) {

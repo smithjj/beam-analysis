@@ -18,7 +18,7 @@ function benchmark_msquared()
     nt_values  = [1, 32, 129];
 
     fprintf('%-6s %-6s %-14s %-14s %-14s %-14s\n', ...
-        'Nx', 'Nt', 'MEX standard', 'Class standard', 'MEX flat', 'Class flat');
+        'Nx', 'Nt', 'MEX', 'Class', 'MEX pulse flat', 'Class pulse flat');
     fprintf('%s\n', repmat('-', 1, 80));
 
     for Nx = grid_sizes

@@ -181,15 +181,11 @@ fprintf('pulse_kyBar:       %.6f rad/mm     %.6f rad/mm\n', results_flat_mex.pul
 fprintf('pulse_wkx:         %.6f rad/mm     %.6f rad/mm\n', results_flat_mex.pulse_wkx*1e-3,  results_flat_class.pulse_wkx*1e-3);
 fprintf('pulse_wky:         %.6f rad/mm     %.6f rad/mm\n', results_flat_mex.pulse_wky*1e-3,  results_flat_class.pulse_wky*1e-3);
 % z0 fields differ in shape/meaning between the two implementations
-fprintf('pulse_z0x:         %.4f mm          [%.4f, %.4f, %.4f] mm*\n', ...
-    results_flat_mex.pulse_z0x*1e3, results_flat_class.pulse_z0x(1)*1e3, ...
-    results_flat_class.pulse_z0x(2)*1e3, results_flat_class.pulse_z0x(3)*1e3);
-fprintf('pulse_z0y:         %.4f mm          [%.4f, %.4f, %.4f] mm*\n', ...
-    results_flat_mex.pulse_z0y*1e3, results_flat_class.pulse_z0y(1)*1e3, ...
-    results_flat_class.pulse_z0y(2)*1e3, results_flat_class.pulse_z0y(3)*1e3);
+fprintf('pulse_z0x:         %.4f mm          %.4f mm*\n', ...
+    results_flat_mex.pulse_z0x*1e3, results_flat_class.pulse_z0x(1)*1e3);
+fprintf('pulse_z0y:         %.4f mm          %.4f mm*\n', ...
+    results_flat_mex.pulse_z0y*1e3, results_flat_class.pulse_z0y(1)*1e3);
 fprintf('=================================================================\n');
-fprintf('* MEX pulse_z0x/y is a scalar Rayleigh range; class pulse_z0x/y is a\n');
-fprintf('  3-vector (one value per curvature-removal pass).\n');
 fprintf('MEX time:   %.4f s\n', t_flat_mex);
 fprintf('Class time: %.4f s\n', t_flat_class);
 

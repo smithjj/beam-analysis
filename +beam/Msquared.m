@@ -95,6 +95,8 @@ classdef Msquared
                 % the opposite, so swap them:
                 xmat = obj.ygrid;
                 ymat = obj.xgrid;
+            elseif isvector(obj.xgrid) && isvector(obj.ygrid)
+                [xmat, ymat] = ndgrid(obj.xgrid, obj.ygrid);
             else
                 keyboard;
             end
@@ -259,6 +261,8 @@ classdef Msquared
             elseif (max(abs(obj.ygrid-circshift(obj.ygrid,[0,1])),[], "all") == 0) && (max(abs(obj.xgrid-circshift(obj.xgrid,[1,0])),[], "all") == 0)
                 xmat = obj.ygrid;
                 ymat = obj.xgrid;
+            elseif isvector(obj.xgrid) && isvector(obj.ygrid)
+                [xmat, ymat] = ndgrid(obj.xgrid, obj.ygrid);
             else
                 keyboard;
             end

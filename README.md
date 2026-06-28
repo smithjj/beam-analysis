@@ -28,8 +28,7 @@ The functions live in the `+beam` namespace and are accessed as
 | `+beam/Msquared.m` | Reference MATLAB class implementation. |
 | `+beam/msquared_mex.*` | Compiled MEX accelerators (`.mexw64`, `.mexa64`). |
 | `msquared_mex.cpp` | C++ MEX source. |
-| `examples/` | Example scripts and benchmarking. |
-| `tests/test_compare_mex.m` | MEX-vs-class regression tests. |
+| `examples/` | Example scripts and benchmarks. |
 | `compile_mex.m` / `compile_wsl.sh` | MEX build scripts for Windows and WSL/Linux. |
 | `ToolboxOptions.m` | Toolbox packaging configuration. |
 | `package_toolbox.m` | One-click build of the installable `.mltbx`. |
@@ -47,6 +46,11 @@ compile_mex
 ```bash
 ./compile_wsl.sh
 ```
+
+Uses **g++** with `-O3 -march=native -ffast-math`, links **FFTW3** (with OpenMP
+multithreading), and prefers batched 2-D FFTs. For the fastest builds on a
+specific CPU, `compile_mex.m` auto-detects Linux and passes the same flags
+when called from inside WSL MATLAB.
 
 Both scripts place the compiled binaries into `+beam/` so they are
 automatically available through the namespace.
@@ -104,13 +108,26 @@ results = beam.msquared_mex(field, xgrid, ygrid, wavelength, 'calculate_pulse_fl
 
 This implements `beam.Msquared().calculate_pulse_flat()`: it time-integrates the fluence first, then computes a **single scalar** M² for the whole pulse. Output field names are prefixed with `pulse_`, but they are scalars (not arrays), except for `pulse_flattened_Exyt` which remains `Nx*Ny × Nt`.
 
-## Running the Tests
+## Benchmarks
 
-From MATLAB:
+### Quick scaling benchmark
 
 ```matlab
-runtests('tests.test_compare_mex')
+benchmark_msquared()
 ```
+
+Compares `msquared_mex` vs `Msquared` class across grid sizes and slice counts.
+
+### FFTW crossover exploration
+
+```matlab
+benchmark_fftw_sweep()
+```
+
+Sweeps the `Nt` dimension for `Nx=256` to explore FFTW- vs MKL-perf crossover.
+## Tests
+
+See `tests/` for regression tests.
 
 ## MEX vs Class Field-Name Convention
 
