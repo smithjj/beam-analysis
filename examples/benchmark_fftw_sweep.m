@@ -29,7 +29,7 @@ function benchmark_fftw_sweep()
         pulse_env = exp(-2 * log(2) * (tvec / FWHM_t).^2);
         E_pulsed = E_cw .* reshape(pulse_env, 1, 1, Nt);
 
-        t_mex = timeit(@() beam.msquared_mex(E_pulsed, xv, xv, lambda, 'pulse'), 1);
+        t_mex = timeit(@() msquared_auto(E_pulsed, xv, xv, lambda, 'pulse'), 1);
 
         m2 = beam.Msquared();
         m2.field = E_pulsed;
@@ -64,7 +64,7 @@ function benchmark_fftw_sweep()
         pulse_env = exp(-2 * log(2) * (tvec / FWHM_t).^2);
         E_pulsed = E_cw .* reshape(pulse_env, 1, 1, Nt);
 
-        t_mex = timeit(@() beam.msquared_mex(E_pulsed, X, Y, lambda, 'pulse_flat'), 1);
+        t_mex = timeit(@() msquared_auto(E_pulsed, X, Y, lambda, 'pulse_flat'), 1);
         m2.field = E_pulsed;
         t_class = timeit(@() m2.calculate_pulse_flat(), 1);
 

@@ -866,7 +866,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         set_scalar(15, z0y_s);
 
         /* Flattened field (3D complex) */
-        mxArray *farr = mxCreateNumericMatrix(Nx * Ny, N3, mxDOUBLE_CLASS, mxCOMPLEX);
+        mwSize fdims3[3] = {(mwSize)Nx, (mwSize)Ny, (mwSize)N3};
+        mxArray *farr = mxCreateNumericArray(3, fdims3, mxDOUBLE_CLASS, mxCOMPLEX);
         double *fpr_out = mxGetPr(farr);
         double *fpi_out = mxGetPi(farr);
         for (mwSize i = 0; i < np * N3; i++) {
@@ -981,8 +982,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     set_field(12, wkx); set_field(13, wky);
     set_field(14, z0x); set_field(15, z0y);
 
-    /* Flattened field */
-    mxArray *farr = mxCreateNumericMatrix(Nx * Ny, N3, mxDOUBLE_CLASS, mxCOMPLEX);
+    /* Flattened field (3D complex) */
+    mwSize fdims3[3] = {(mwSize)Nx, (mwSize)Ny, (mwSize)N3};
+    mxArray *farr = mxCreateNumericArray(3, fdims3, mxDOUBLE_CLASS, mxCOMPLEX);
     double *fpr_out = mxGetPr(farr);
     double *fpi_out = mxGetPi(farr);
     for (mwSize i = 0; i < Nx * Ny * N3; i++) {

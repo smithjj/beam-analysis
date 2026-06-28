@@ -4,10 +4,17 @@
 
 # Build artifacts
 +beam/*.o
++beam/*.mexa64
++beam/*.mexmaca64
++beam/*.mexmaci64
++beam/msquared_mex_backup_*.mexw64
+
+# Packaged toolbox
+*.mltbx
+msquared_mex.zip
 
 # OS files
 .DS_Store
-msquared_mex_backup_20260628_013659.mexw64
-msquared_mex_backup_moved_20260628_013659.mexw64
-+beam/msquared_mex_backup_stale.mexw64
-msquared_mex.zip
+
+# MATLAB temp artifacts
+Users*matlab_mcp_tools_cache.json

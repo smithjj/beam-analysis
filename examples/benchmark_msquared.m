@@ -47,7 +47,7 @@ function benchmark_msquared()
             end
 
             %% Standard per-slice mode
-            t_mex = timeit(@() beam.msquared_mex(E_pulsed, xv, xv, lambda, 'pulse'), 1);
+            t_mex = timeit(@() msquared_auto(E_pulsed, xv, xv, lambda, 'pulse'), 1);
 
             m2 = beam.Msquared();
             m2.field = E_pulsed;
@@ -58,7 +58,7 @@ function benchmark_msquared()
 
             %% pulse_flat mode (only meaningful for Nt > 1)
             if Nt > 1
-                t_mex_flat = timeit(@() beam.msquared_mex(E_pulsed, X, Y, lambda, 'pulse_flat'), 1);
+                t_mex_flat = timeit(@() msquared_auto(E_pulsed, X, Y, lambda, 'pulse_flat'), 1);
                 t_class_flat = timeit(@() m2.calculate_pulse_flat(), 1);
             else
                 t_mex_flat = NaN;

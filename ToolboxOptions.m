@@ -24,7 +24,7 @@ function opts = ToolboxOptions()
         "4fc9c860-046b-492a-868e-27a83a9f6047");
 
     opts.ToolboxName        = "Msquared Toolbox";
-    opts.ToolboxVersion     = "1.0.0";
+    opts.ToolboxVersion     = "1.0.1";
     opts.AuthorName         = "Jesse Smith";
     opts.AuthorEmail        = "jesse.smith@as-photonics.com";
     opts.AuthorCompany      = "AS-Photonics";
@@ -60,14 +60,14 @@ function files = localListToolboxFiles(root)
     n = length(rootPrefix);
     relPaths = cellfun(@(p) p(n+1:end), absPaths, 'UniformOutput', false);
 
-    isMex     = ~cellfun(@isempty, regexp(relPaths, '\.mex\w*$', 'once'));
-    isZipMEX  = strcmp(relPaths, 'msquared_mex.zip');
+    isMexNonWin = ~cellfun(@isempty, regexp(relPaths, '\.mex(mac|a)\w*$', 'once'));
+    isZipMEX    = strcmp(relPaths, 'msquared_mex.zip');
     isMltbx   = strcmp(relPaths, 'MsquaredToolbox.mltbx');
     isShell   = strcmp(relPaths, 'compile_wsl.sh');
     isBackup  = ~cellfun(@isempty, regexp(relPaths, '_backup(_moved)?_', 'once'));
     isDSStore = strcmp(relPaths, '.DS_Store');
     isVCS     = ~cellfun(@isempty, regexp(relPaths, '^\.git(/|$)', 'once'));
 
-    keep = ~(isMex | isZipMEX | isMltbx | isShell | isBackup | isDSStore | isVCS);
+    keep = ~(isMexNonWin | isZipMEX | isMltbx | isShell | isBackup | isDSStore | isVCS);
     files = sort(relPaths(keep));
 end

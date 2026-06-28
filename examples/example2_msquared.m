@@ -69,7 +69,7 @@ fprintf('Total power (after normalisation) = %.2f W\n', 0.5*epsilon_0*c*trapz(tr
 
 fprintf('\nRunning msquared_mex ...\n');
 tic;
-results_mex = beam.msquared_mex(E, xmat, ymat, lambda);
+results_mex = msquared_auto(E, xmat, ymat, lambda);
 t_mex = toc;
 
 %% Call Msquared

@@ -106,7 +106,7 @@ fprintf('\nPulse energy: %.3f mJ (target %.0f mJ)\n', energy_check*1e3, pulse_en
 % --- MEX per-slice mode ---
 fprintf('\nRunning msquared_mex (instantaneous mode) ...\n');
 tic;
-results_mex = beam.msquared_mex(E_pulsed, xv, yv, lambda, 'pulse');
+results_mex = msquared_auto(E_pulsed, xv, yv, lambda, 'pulse');
 t_mex = toc;
 
 % --- Msquared per-slice mode ---
@@ -154,7 +154,7 @@ fprintf('Class time: %.4f s\n', t_class);
 % --- MEX pulse_flat mode ---
 fprintf('\nRunning msquared_mex (fluence-based pulse_flat mode) ...\n');
 tic;
-results_flat_mex = beam.msquared_mex(E_pulsed, X2d, Y2d, lambda, 'pulse_flat');
+results_flat_mex = msquared_auto(E_pulsed, X2d, Y2d, lambda, 'pulse_flat');
 t_flat_mex = toc;
 
 % --- Msquared pulse_flat mode ---
