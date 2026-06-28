@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 #
-# compile_wsl.sh — Build the Msquared MEX files on WSL/Linux.
+# compile_wsl.sh — Legacy WSL/Linux wrapper for building the Msquared MEX files.
+# Prefer compile_mex.m on all platforms.
 #
 # Compiles:
-#   msquared_mex.cpp  -> msquared_mex.mexa64
+#   +beam/private/msquared_mex.cpp  -> msquared_mex.mexa64
 #       Default: OpenMP + MATLAB's MKL-backed fft2 via mexCallMATLAB.
 #       (Benchmarks showed this gives ~1.5x speedup on WSL, vs ~4x on native
 #        Windows with direct FFTW. WSL2 virtualization overhead negates the
 #        benefit of direct FFTW for this workload.)
 #
-# Usage:
+# Usage (legacy compatibility only):
 #   ./compile_wsl.sh                  # build default (MKL fft2)
 #   ./compile_wsl.sh fftw             # build with MATLAB's libmwfftw3.so
 #   ./compile_wsl.sh clean            # remove built artifacts
@@ -69,7 +70,7 @@ MEX_FLAGS=(
 # )
 
 build_mex() {
-    local src="msquared_mex.cpp"
+    local src="+beam/private/msquared_mex.cpp"
     local out="msquared_mex"
     if [[ ! -f "$src" ]]; then
         echo "ERROR: $src not found in $REPO_DIR" >&2

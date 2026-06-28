@@ -1,6 +1,6 @@
 %% compile_mex.m
 %
-% Compile msquared_mex.cpp with
+% Compile +beam/private/msquared_mex.cpp with
 % platform-specific optimization flags.  Run this from the repo root.
 %
 % Example:
@@ -109,7 +109,7 @@ function compile_mex(profile)
             ldFlagsEnv ...
             '-outdir "+beam" ' ...
             '-output msquared_mex ' ...
-            'msquared_mex.cpp ' ...
+            '+beam/private/msquared_mex.cpp ' ...
             fftwLib];
 
         if hasOmp
@@ -161,7 +161,7 @@ function compile_mex(profile)
             'LDFLAGS="$LDFLAGS -fopenmp" ' ...
             '-outdir "+beam" ' ...
             '-output msquared_mex ' ...
-            'msquared_mex.cpp'];
+            '+beam/private/msquared_mex.cpp'];
 
         % If FFTW is uncommented, also append LINKLIBS to cmd above:
         % cmd = [cmd, ' LINKLIBS="$LINKLIBS -l:' fftwLib '" '];
@@ -217,8 +217,8 @@ function compile_mex(profile)
     fprintf('Linker optimization flags: %s\n', ldFlags);
 
     %% Source files to compile
-    %  msquared_mex.cpp uses the separate real/imaginary API (R2017b).
-    sources = {'msquared_mex.cpp'};
+    %  +beam/private/msquared_mex.cpp uses the separate real/imaginary API (R2017b).
+    sources = {'+beam/private/msquared_mex.cpp'};
     extraFlags = {{}};   % per-source additional mex arguments
 
     %% Backup (and temporarily remove) existing .mexw64 files
@@ -244,7 +244,7 @@ function compile_mex(profile)
         end
     end
 
-    %% MATLAB FFTW library (for direct FFT in msquared_mex.cpp)
+    %% MATLAB FFTW library (for direct FFT in +beam/private/msquared_mex.cpp)
     fftwLib = fullfile(matlabroot, 'lib', 'win64', 'libmwfftw3.lib');
     if ~exist(fftwLib, 'file')
         error('MATLAB FFTW import library not found: %s', fftwLib);

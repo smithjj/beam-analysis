@@ -26,22 +26,25 @@ The functions live in the `+beam` namespace and are accessed as
 | Path | Description |
 |------|-------------|
 | `+beam/Msquared.m` | Reference MATLAB class implementation. |
-| `+beam/msquared_mex.*` | Compiled MEX accelerators (`.mexw64`, `.mexa64`). |
-| `msquared_mex.cpp` | C++ MEX source. |
+| `+beam/msquared_mex.*` | Compiled MEX accelerators (`.mexw64`, `.mexa64`, `.mexmaca64`). |
+| `+beam/private/msquared_mex.cpp` | Private C++ MEX source. |
 | `examples/` | Example scripts and benchmarks. |
-| `compile_mex.m` / `compile_wsl.sh` | MEX build scripts for Windows and WSL/Linux. |
+| `compile_mex.m` / `compile_wsl.sh` | MEX build scripts (use `compile_mex` on all platforms; `compile_wsl.sh` is legacy WSL/Linux compatibility only). |
 | `ToolboxOptions.m` | Toolbox packaging configuration. |
 | `package_toolbox.m` | One-click build of the installable `.mltbx`. |
 
 ## Building the MEX
 
-### Windows
+### Windows / macOS / WSL/Linux
 
 ```matlab
 compile_mex
 ```
 
-### WSL/Linux
+`compile_mex.m` auto-detects the host OS and builds the matching binary into
+`+beam/`.
+
+### Legacy WSL/Linux wrapper (compatibility only)
 
 ```bash
 ./compile_wsl.sh
@@ -50,10 +53,13 @@ compile_mex
 Uses **g++** with `-O3 -march=native -ffast-math` and **OpenMP**. WSL/Linux
 builds link **MATLAB's own `libmwfftw3.so`** for direct FFT access, which
 outperformed both `mexCallMATLAB("fft2")` and the system `libfftw3`.
-Windows builds link MATLAB's bundled `libmwfftw3.lib`.
+Windows builds link MATLAB's bundled `libmwfftw3.lib`; macOS links
+MATLAB's bundled `libmwfftw3.dylib` and `libomp.dylib`.
 
-Both scripts place the compiled binaries into `+beam/` so they are
-automatically available through the namespace.
+`compile_mex` places the compiled binaries into `+beam/` so they are
+automatically available through the namespace on the current machine.
+
+`compile_wsl.sh` is retained only for older shell-based WSL/Linux workflows.
 
 ## Usage
 
@@ -144,7 +150,7 @@ See `tests/` for regression tests.
    Second-moment M² is sensitive to truncation. Displacing a beam near the grid edge or using a very tight radius of curvature can raise M² above 1 even for an otherwise ideal Gaussian.
 
 3. **Compiled binaries are platform-specific.**
-   The `.mexw64` files run on Windows; the `.mexa64` files run on Linux/WSL. Re-run the appropriate compile script on a new platform.
+   The `.mexw64` files run on Windows; the `.mexa64` files run on Linux/WSL; the `.mexmaca64` files run on Apple Silicon macOS. Re-run `compile_mex` on a new platform.
 
 ## Package the Toolbox
 

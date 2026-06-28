@@ -5,10 +5,10 @@
 %   +beam                       - Namespace package containing class and MEX
 %   +beam/Msquared              - M-squared calculator class
 %   +beam/msquared_mex          - Fast MEX drop-in for class methods
+%   +beam/private/msquared_mex.cpp - Private C++ source for the MEX
 %   examples                    - Example scripts and benchmarks
-%   tests                       - Regression tests comparing MEX to class
-%   compile_mex                 - Windows MEX compiler script
-%   compile_wsl                 - WSL/Linux MEX compiler script
+%   compile_mex                 - Cross-platform MEX compiler script
+%   compile_wsl                 - Legacy WSL/Linux MEX compiler script (use compile_mex instead)
 %   ToolboxOptions              - Toolbox packaging configuration
 %
 % Getting started
