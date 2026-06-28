@@ -1,13 +1,12 @@
 # pi session
 /.pi
-
-# Compiled MEX binaries
-+beam/*.mexa64
-+beam/*.mexw64
-+beam/*.mexmaci64
+.gitignore
 
 # Build artifacts
 +beam/*.o
 
 # OS files
 .DS_Store
+msquared_mex_backup_20260628_013659.mexw64
+msquared_mex_backup_moved_20260628_013659.mexw64
++beam/msquared_mex_backup_stale.mexw64
