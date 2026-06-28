@@ -4,7 +4,8 @@
 #
 # Compiles:
 #   msquared_mex.cpp  -> msquared_mex.mexa64
-#       Uses FFTW3 with OpenMP and the system's FFTW multithreaded library.
+#       Uses OpenMP + MATLAB's MKL-backed fft2 via mexCallMATLAB.
+#       (Benchmarks show MKL outperforms system FFTW3 on WSL for this workload.)
 #
 # Usage:
 #   ./compile_wsl.sh                  # build all
@@ -31,9 +32,9 @@ set -euo pipefail
 #                           otherwise you get undefined refs to omp_get_*.
 #   -DNDEBUG               Strip assert() overhead.
 #
-#   -lfftw3_omp            FFTW3 with internal OpenMP threading (parallel FFT
-#                           plans). This is what makes large Nx fast.
-#   -lfftw3                Core FFTW3 library.
+#   (FFTW3 libraries are NOT linked on WSL/Linux; benchmarks showed
+#    MATLAB's MKL-backed fft2 outperforms system libfftw3 for this
+#    workload.  FFTW3 is still available on Windows via compile_mex.m.)
 # ---------------------------------------------------------------------------
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -43,23 +44,22 @@ cd "$REPO_DIR"
 # LDFLAGS must include -fopenmp so the linker resolves omp_get_* / GOMP_*.
 # LINKLIBS picks up the FFTW libraries.
 read -r -d '' CXXOPTIMFLAGS <<'EOF' || true
--O3 -march=native -ffast-math -funroll-loops -fopenmp -DNDEBUG -DUSE_FFTW
+-O3 -march=native -ffast-math -funroll-loops -fopenmp -DNDEBUG
 EOF
 
 MEX_FLAGS=(
     "CXXOPTIMFLAGS=$CXXOPTIMFLAGS"
     "LDFLAGS=\$LDFLAGS -fopenmp"
-    "LINKLIBS=\$LINKLIBS -lfftw3_omp -lfftw3"
 )
 
-build_fftw() {
+build_mex() {
     local src="msquared_mex.cpp"
     local out="msquared_mex"
     if [[ ! -f "$src" ]]; then
         echo "ERROR: $src not found in $REPO_DIR" >&2
         return 1
     fi
-    echo "==> Building $out (FFTW3 + OpenMP)"
+    echo "==> Building $out (OpenMP, MATLAB fft2 fallback)"
     mex "${MEX_FLAGS[@]}" -outdir "$REPO_DIR/+beam" -output "$(basename "$out")" "$src"
     echo "    -> $REPO_DIR/+beam/$out.mexa64"
 }
@@ -111,7 +111,7 @@ fi
 
 for t in "${targets[@]}"; do
     case "$t" in
-        msquared_mex)   build_fftw ;;
+        msquared_mex)   build_mex ;;
         *)
             echo "ERROR: unknown target '$t'" >&2
             echo "Valid targets: msquared_mex, clean" >&2

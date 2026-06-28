@@ -47,10 +47,10 @@ compile_mex
 ./compile_wsl.sh
 ```
 
-Uses **g++** with `-O3 -march=native -ffast-math`, links **FFTW3** (with OpenMP
-multithreading), and prefers batched 2-D FFTs. For the fastest builds on a
-specific CPU, `compile_mex.m` auto-detects Linux and passes the same flags
-when called from inside WSL MATLAB.
+Uses **g++** with `-O3 -march=native -ffast-math` and **OpenMP**. On WSL/Linux
+the build calls MATLAB's MKL-backed `fft2` (via `mexCallMATLAB`), which
+outperformed system FFTW3 in benchmarks.  Windows builds still link
+MATLAB's bundled `libmwfftw3` for direct FFT access.
 
 Both scripts place the compiled binaries into `+beam/` so they are
 automatically available through the namespace.
