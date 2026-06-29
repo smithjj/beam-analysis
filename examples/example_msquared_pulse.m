@@ -230,17 +230,14 @@ title('Radius of curvature vs time');
 legend('R_x', 'R_y', 'Location', 'best');
 grid on;
 
-% --- 6. Check energy in flattened (curvature-removed) field ---
-E_flat = results.flattened_Exyz;       % Nx*Ny x Nt, column-major
-E_flat = reshape(E_flat, Nx, Nx, Nt);        % Nx x Ny x Nt
-energy_flat = 0.5 * epsilon_0 * c * sum(abs(E_flat(:)).^2) * dx * dy * dt;
+% --- 6. Power vs time ---
+% Power = integral of instantaneous intensity over the transverse plane.
+P_t = 0.5 * epsilon_0 * c * squeeze(sum(sum(abs(E_pulsed).^2, 1), 2)) * dx * dy;
 
-I_slice = squeeze(sum(sum(abs(E_flat).^2, 1), 2));
-I_slice = I_slice / max(I_slice);
 subplot(2, 3, 6);
-plot(tvec*1e9, I_slice, 'k.-', 'LineWidth', 1.5, 'MarkerSize', 8);
-xlabel('Time (ns)'); ylabel('Norm. energy per slice');
-title(sprintf('Flat-field envelope\nTotal = %.3f mJ', energy_flat*1e3));
+plot(tvec*1e9, P_t*1e-3, 'b.-', 'LineWidth', 1.5, 'MarkerSize', 8);
+xlabel('Time (ns)'); ylabel('Power (kW)');
+title(sprintf('Power vs time\nPeak = %.2f kW', max(P_t)*1e-3));
 grid on;
 
 sgtitle(sprintf('Pulsed Gaussian beam:  FWHM_{beam}=%.3f mm,  FWHM_{pulse}=%.1f ns,  %.0f mJ', ...

@@ -285,26 +285,14 @@ title('Radius of curvature vs time');
 legend('MEX R_x', 'Class R_x', 'MEX R_y', 'Class R_y', 'Location', 'best');
 grid on;
 
-% --- 6. Check energy in flattened (curvature-removed) field ---
-E_flat_mex = results_mex.flattened_Exyz;       % Nx*Ny x Nt, column-major
-E_flat_mex = reshape(E_flat_mex, Nx, Nx, Nt);        % Nx x Ny x Nt
-energy_flat_mex = 0.5 * epsilon_0 * c * sum(abs(E_flat_mex(:)).^2) * dx * dy * dt;
-
-E_flat_class = results_class.flattened_Exyz;       % Nx x Ny x Nt
-energy_flat_class = 0.5 * epsilon_0 * c * sum(abs(E_flat_class(:)).^2) * dx * dy * dt;
-
-I_slice_mex   = squeeze(sum(sum(abs(E_flat_mex).^2,   1), 2));
-I_slice_class = squeeze(sum(sum(abs(E_flat_class).^2, 1), 2));
-I_slice_mex   = I_slice_mex   / max(I_slice_mex);
-I_slice_class = I_slice_class / max(I_slice_class);
+% --- 6. Power vs time ---
+% Power = integral of instantaneous intensity over the transverse plane.
+P_t = 0.5 * epsilon_0 * c * squeeze(sum(sum(abs(E_pulsed).^2, 1), 2)) * dx * dy;
 
 subplot(2, 3, 6);
-plot(tvec*1e9, I_slice_mex,   'b.-', 'LineWidth', 1.5, 'MarkerSize', 8); hold on;
-plot(tvec*1e9, I_slice_class, 'r.--', 'LineWidth', 1.5, 'MarkerSize', 8);
-xlabel('Time (ns)'); ylabel('Norm. energy per slice');
-title(sprintf('Flat-field envelope\nMEX = %.3f mJ, class = %.3f mJ', ...
-    energy_flat_mex*1e3, energy_flat_class*1e3));
-legend('MEX', 'Class', 'Location', 'best');
+plot(tvec*1e9, P_t*1e-3, 'b.-', 'LineWidth', 1.5, 'MarkerSize', 8);
+xlabel('Time (ns)'); ylabel('Power (kW)');
+title(sprintf('Power vs time\nPeak = %.2f kW', max(P_t)*1e-3));
 grid on;
 
 sgtitle(sprintf('Pulsed Gaussian beam:  FWHM_{beam}=%.3f mm,  FWHM_{pulse}=%.1f ns,  %.0f mJ', ...
