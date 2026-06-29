@@ -1,6 +1,23 @@
 Changelog for Msquared Toolbox
 ==============================
 
+Version 1.0.3 — 29 Jun 2026
+---------------------------
+Performance
+  - Added inner OpenMP parallelism inside compute_slice() for
+    single-slice / few-slice large-grid cases (threshold 65536
+    pixels). Nt=1 speedup on 256×256 grids improved from ~1.9×
+    to ~4.3× on Windows/MinGW.
+  - Inner OpenMP is auto-disabled when the outer parallel slice
+    loop is already active, avoiding thread oversubscription.
+  - Spatial/k-space moment reductions and curvature-removal phase
+    multiply are now parallelized inside each slice.
+
+Build
+  - Added MEX_PROFILE-gated timers for standard-mode FFT,
+    slice loop, and output build. Use compile_mex(true) to
+    enable profiling output.
+
 Version 1.0.2 — 28 Jun 2026
 ---------------------------
 Fixed

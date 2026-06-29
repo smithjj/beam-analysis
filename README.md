@@ -112,7 +112,7 @@ results = beam.msquared_mex(field, xgrid, ygrid, wavelength, 'pulse_flat');
 results = beam.msquared_mex(field, xgrid, ygrid, wavelength, 'calculate_pulse_flat');
 ```
 
-This implements `beam.Msquared().calculate_pulse_flat()`: it time-integrates the fluence first, then computes a **single scalar** M² for the whole pulse. Output field names are prefixed with `pulse_`, but they are scalars (not arrays), except for `pulse_flattened_Exyt` which remains `Nx*Ny × Nt`.
+This implements `beam.Msquared().calculate_pulse_flat()`: it time-integrates the fluence first, then computes a **single scalar** M² for the whole pulse. Output field names are prefixed with `pulse_`, but they are scalars (not arrays), except for `pulse_flattened_Exyt` which is a 3-D `Nx × Ny × Nt` array.
 
 ## Benchmarks
 

@@ -195,17 +195,29 @@ static SliceResult compute_slice(const cdouble* Exy, const cdouble* Ek,
                                   mwSize Nx, mwSize Ny,
                                   double dx, double dy, double k0,
                                   cdouble* Exy_flat_out) {
-    /* Pass 1: Ixy, centroids, widths (column-major indexing) */
+    /* Inner OpenMP helps when this function is called outside the outer
+     * parallel slice loop (e.g. single-slice / few-slice runs).  When
+     * already nested we stay serial to avoid oversubscription. */
+#ifdef _OPENMP
+    bool nested = (omp_get_level() > 0);
+    const mwSize omp_threshold = 65536;  /* ~256 x 256 */
+#else
+    bool nested = false;
+    const mwSize omp_threshold = 0;
+#endif
+    mwSize np = Nx * Ny;
+
+    /* Pass 1: Ixy, centroids, widths (flat loop for OpenMP) */
     double U = 0;
     double xBar = 0, yBar = 0;
-    for (mwSize ix = 0; ix < Ny; ix++) {
-        for (mwSize iy = 0; iy < Nx; iy++) {
-            mwSize idx = IDX(iy, ix, Nx);
-            double I = Exy[idx].real() * Exy[idx].real() + Exy[idx].imag() * Exy[idx].imag();
-            U += I;
-            xBar += xmat[idx] * I;
-            yBar += ymat[idx] * I;
-        }
+#ifdef _OPENMP
+    #pragma omp parallel for reduction(+:U,xBar,yBar) schedule(static) if(!nested && np >= omp_threshold)
+#endif
+    for (mwSize i = 0; i < np; i++) {
+        double I = Exy[i].real() * Exy[i].real() + Exy[i].imag() * Exy[i].imag();
+        U += I;
+        xBar += xmat[i] * I;
+        yBar += ymat[i] * I;
     }
 
     if (U == 0) {
@@ -222,21 +234,24 @@ static SliceResult compute_slice(const cdouble* Exy, const cdouble* Ek,
     yBar /= U;
 
     double wxsq = 0, wysq = 0;
-    for (mwSize ix = 0; ix < Ny; ix++) {
-        for (mwSize iy = 0; iy < Nx; iy++) {
-            mwSize idx = IDX(iy, ix, Nx);
-            double I = Exy[idx].real() * Exy[idx].real() + Exy[idx].imag() * Exy[idx].imag();
-            double ddx = xmat[idx] - xBar;
-            double ddy = ymat[idx] - yBar;
-            wxsq += ddx * ddx * I;
-            wysq += ddy * ddy * I;
-        }
+#ifdef _OPENMP
+    #pragma omp parallel for reduction(+:wxsq,wysq) schedule(static) if(!nested && np >= omp_threshold)
+#endif
+    for (mwSize i = 0; i < np; i++) {
+        double I = Exy[i].real() * Exy[i].real() + Exy[i].imag() * Exy[i].imag();
+        double ddx = xmat[i] - xBar;
+        double ddy = ymat[i] - yBar;
+        wxsq += ddx * ddx * I;
+        wysq += ddy * ddy * I;
     }
     wxsq = 4.0 * wxsq / U;
     wysq = 4.0 * wysq / U;
 
     double Uk = 0, kxBar = 0, kyBar = 0;
-    for (mwSize i = 0; i < Nx * Ny; i++) {
+#ifdef _OPENMP
+    #pragma omp parallel for reduction(+:Uk,kxBar,kyBar) schedule(static) if(!nested && np >= omp_threshold)
+#endif
+    for (mwSize i = 0; i < np; i++) {
         double Ik = Ek[i].real() * Ek[i].real() + Ek[i].imag() * Ek[i].imag();
         Uk += Ik;
         kxBar += kxmat[i] * Ik;
@@ -246,7 +261,10 @@ static SliceResult compute_slice(const cdouble* Exy, const cdouble* Ek,
     kyBar /= Uk;
 
     double wkxsq = 0, wkysq = 0;
-    for (mwSize i = 0; i < Nx * Ny; i++) {
+#ifdef _OPENMP
+    #pragma omp parallel for reduction(+:wkxsq,wkysq) schedule(static) if(!nested && np >= omp_threshold)
+#endif
+    for (mwSize i = 0; i < np; i++) {
         double Ik = Ek[i].real() * Ek[i].real() + Ek[i].imag() * Ek[i].imag();
         double ddx = kxmat[i] - kxBar;
         double ddy = kymat[i] - kyBar;
@@ -307,7 +325,10 @@ static SliceResult compute_slice(const cdouble* Exy, const cdouble* Ek,
 
         /* Remove curvature (skip on last pass) */
         if (P < 2) {
-            for (mwSize i = 0; i < Nx * Ny; i++) {
+#ifdef _OPENMP
+            #pragma omp parallel for schedule(static) if(!nested && np >= omp_threshold)
+#endif
+            for (mwSize i = 0; i < np; i++) {
                 double xc = xmat[i] - xBar;
                 double yc = ymat[i] - yBar;
                 double phase = -k0 * (xc * xc / (2.0 * Rx) + yc * yc / (2.0 * Ry));
@@ -880,11 +901,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 
     /* ---- Standard (per-slice) mode ---- */
     /* Batch FFT all slices at once (direct FFTW, or MATLAB fft2 fallback) */
+    MEX_TIMER_START(std_fft);
 #ifdef USE_FFTW
     std::vector<cdouble> fft_field(field);
-    MEX_TIMER_START(fft);
     fftw_batch_2d(fft_field.data(), Nx, Ny, N3);
-    MEX_TIMER_STOP(fft, "standard batch FFT");
 #else
     mxArray *fft_field_mx = nullptr;
     mxArray *field_in = const_cast<mxArray*>(field_mx);
@@ -892,6 +912,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     const double *fft_pr = mxGetPr(fft_field_mx);
     const double *fft_pi = mxGetPi(fft_field_mx);
 #endif
+    MEX_TIMER_STOP(std_fft, "standard batch FFT");
+
+    MEX_TIMER_START(std_sliceloop);
 
     /* Process slices */
     std::vector<double> M2x(N3), M2y(N3), Rx(N3), Ry(N3);
@@ -949,6 +972,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         }
     }
 
+    MEX_TIMER_STOP(std_sliceloop, "standard slice loop");
+
+    MEX_TIMER_START(std_output);
     /* Build output struct */
     const char *fnames[] = {
         "M2_x", "M2_y", "Rx", "Ry", "wx0", "wy0",
@@ -992,4 +1018,5 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         fpi_out[i] = flattened[i].imag();
     }
     mxSetField(plhs[0], 0, names[16], farr);
+    MEX_TIMER_STOP(std_output, "standard output build");
 }
