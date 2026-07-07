@@ -10,7 +10,7 @@ function benchmark_fftw_sweep()
     k0      = 2 * pi / lambda;
     w       = FWHM / sqrt(2 * log(2));
 
-    Nx = 256;
+    Nx = 64;
     xv = linspace(-1.5e-3, 1.5e-3, Nx);
     [X, Y] = meshgrid(xv, xv);
     rSq = X.^2 + Y.^2;
@@ -18,7 +18,7 @@ function benchmark_fftw_sweep()
 
     % Sweep Nt around the anomaly region
     nt_values = [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 129, 160, 200];
-
+    fprintf('Nx=Ny=%i\n', Nx);
     fprintf('%-6s %-14s %-14s %-10s %-10s\n', ...
         'Nt', 'MEX (s)', 'Class (s)', 'Speedup', 'Winner');
     fprintf('%s\n', repmat('-', 1, 60));

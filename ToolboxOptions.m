@@ -24,7 +24,7 @@ function opts = ToolboxOptions()
         "4fc9c860-046b-492a-868e-27a83a9f6047");
 
     opts.ToolboxName        = "Msquared Toolbox";
-    opts.ToolboxVersion     = "1.0.2";
+    opts.ToolboxVersion     = "1.0.3";
     opts.AuthorName         = "Jesse Smith";
     opts.AuthorEmail        = "jesse.smith@as-photonics.com";
     opts.AuthorCompany      = "AS-Photonics";

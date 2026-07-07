@@ -28,7 +28,7 @@
  *Install MATLAB Support for MinGW-w64 C/C++/Fortran Compiler via
  * the add-ons explorer and compile with: mex msquared_mex.cpp
  */
-
+// changelog: July 7, 2026: negate Rx, Ry to make convention positive roc is focusing
 #define _USE_MATH_DEFINES
 #include "mex.h"
 #include <cmath>
@@ -366,7 +366,7 @@ static SliceResult compute_slice(const cdouble* Exy, const cdouble* Ek,
     r.wx = std::sqrt(wxsq); r.wy = std::sqrt(wysq);
     r.kxBar = kxBar; r.kyBar = kyBar;
     r.wkx = std::sqrt(wkxsq); r.wky = std::sqrt(wkysq);
-    r.Rx = Rx_c; r.Ry = Ry_c;
+    r.Rx = -Rx_c; r.Ry = -Ry_c;
     r.wx0sq = wx0sq; r.wy0sq = wy0sq;
     r.M2x = M2x; r.M2y = M2y;
     return r;
@@ -645,8 +645,8 @@ static void compute_pulse_flat(
     }
     double Rx_c = 1.0 / Rx_inv;
     double Ry_c = 1.0 / Ry_inv;
-    Rx_out = Rx_c;
-    Ry_out = Ry_c;
+    Rx_out = -Rx_c;
+    Ry_out = -Ry_c;
 
     /* Beam waist and M-squared (Eq 7.119, 7.120) */
     double wx0sq = wxsq - wxsq * wxsq * k0 * k0 / (wkxsq * Rx_c * Rx_c);

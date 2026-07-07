@@ -216,8 +216,8 @@ classdef Msquared
             % Collect all the results as data struct fields in the 'results' class property
             obj.results.pulse_M2_x      = M2_x_corrected;
             obj.results.pulse_M2_y      = M2_y_corrected;
-            obj.results.pulse_Rx        = Rx_corrected;
-            obj.results.pulse_Ry        = Ry_corrected;
+            obj.results.pulse_Rx        = -Rx_corrected;
+            obj.results.pulse_Ry        = -Ry_corrected;
             obj.results.pulse_wx0       = sqrt(wx0squared_fl_corrected);
             obj.results.pulse_wy0       = sqrt(wy0squared_fl_corrected);
             obj.results.pulse_xBar      = xBar_fl(1);
@@ -430,8 +430,8 @@ classdef Msquared
                 obj.results.z0y         = z0y; % dist to focus
                 obj.results.M2_x        = M2_x;
                 obj.results.M2_y        = M2_y;
-                obj.results.Rx          = Rx_corrected;
-                obj.results.Ry          = Ry_corrected;
+                obj.results.Rx          = -Rx_corrected;
+                obj.results.Ry          = -Ry_corrected;
                 obj.results.wx0         = sqrt(wx0squared);
                 obj.results.wy0         = sqrt(wy0squared);
                 obj.results.xBar        = xBar;
