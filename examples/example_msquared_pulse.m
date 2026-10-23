@@ -124,8 +124,8 @@ fprintf('wx0 (waist):    %.4f mm\n', results.wx0(t0_idx)*1e3);
 fprintf('wy0 (waist):    %.4f mm\n', results.wy0(t0_idx)*1e3);
 fprintf('Rx:             %+.1f mm\n',results.Rx(t0_idx)*1e3 );
 fprintf('Ry:             %+.1f mm\n',results.Ry(t0_idx)*1e3 );
-fprintf('z0x (Rayleigh): %.2f mm\n', results.z0x(t0_idx)*1e3);
-fprintf('z0y (Rayleigh): %.2f mm\n', results.z0y(t0_idx)*1e3);
+fprintf('z0x (to waist): %+.2f mm\n', results.z0x(t0_idx)*1e3);
+fprintf('z0y (to waist): %+.2f mm\n', results.z0y(t0_idx)*1e3);
 fprintf('=================================================\n');
 
 %% Fluence-based pulse analysis: calculate_pulse_flat equivalent

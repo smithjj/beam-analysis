@@ -18,3 +18,6 @@ msquared_mex.zip
 
 # MATLAB temp artifacts
 Users*matlab_mcp_tools_cache.json
+
+# compile_mex.m backups (written to the repo root on Windows)
+/msquared_mex_backup_*.mexw64

@@ -70,10 +70,12 @@ results = beam.msquared_mex(field, xgrid, ygrid, wavelength);
 ```
 
 - `field` — complex `Nx × Ny` array, or `Nx × Ny × Nt` array for per-slice analysis.
-- `xgrid`, `ygrid` — vectors or 2-D coordinate grids (m).
+- `xgrid`, `ygrid` — vectors (row or column) or 2-D coordinate grids (m). x runs along the 1st dimension of `field` and y along the 2nd, so 2-D grids must come from `ndgrid(x,y)` or `meshgrid(y,x)`. `meshgrid(x,y)` grids raise a `gridOrientation` error.
 - `wavelength` — wavelength (m).
 
 Returned fields include `M2_x`, `M2_y`, `Rx`, `Ry`, `wx`, `wy`, `wx0`, `wy0`, `z0x`, `z0y`, centroids, k-space widths, and `flattened_Exyz`.
+
+Sign conventions: `Rx`/`Ry` are positive for a focusing (converging) beam. `z0x`/`z0y` are the distance from the waist to the measurement plane, positive when the measurement plane is downstream of the waist, so `z0` and `R` have opposite signs.
 
 ### Using the class
 

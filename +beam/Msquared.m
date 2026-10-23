@@ -25,9 +25,12 @@
 %       debugging       - Enable diagnostic output
 %
 %   By Jesse Smith jesse.smith@as-photonics.com
-%   Last modified October 30, 2023
+%   Last modified October 23, 2026
 %
 %   changelog:
+%   10/23/26 - z0 is signed (positive downstream of waist); pulse z0 uses the
+%              harmonic-sum R; vector grids in any orientation; meshgrid(x,y)
+%              grids raise beam:Msquared:gridOrientation instead of swapping x/y
 %   10/30/23 - clean more code, add equation numbers
 %   8/30/23  - remove old code, clean up comments
 %   8/26/22  - use loop thru nz/nt rather than big 3d arrays
@@ -76,30 +79,7 @@ classdef Msquared
 
             Exyt = obj.field; % 3 dimensional array of electric field; first dimension is x, second is y, third is time
 
-            % xgrid and ygrid must be either a vector or a matrix (increasing in one
-            % dimension and constant in the other; for xgrid, second dimension is
-            % constant, and for ygrid first is constant.)
-
-            if isvector(obj.xgrid) || isvector(obj.ygrid)
-                % if xgrid and ygrid are provided as vectors, make meshgrids out of them:
-                [ymat,xmat]=meshgrid(obj.ygrid,obj.xgrid);
-            end
-            % obj.xgrid and obj.ygrid are not vectors; let's make sure they are oriented
-            % correctly:
-            if (max(abs(obj.xgrid-circshift(obj.xgrid,[0,1])),[], "all") == 0) && (max(abs(obj.ygrid-circshift(obj.ygrid,[1,0])),[], "all") == 0)
-                % xgrid is constant in 2nd dimension, and ygrid in 1st
-                xmat = obj.xgrid;
-                ymat = obj.ygrid;
-            elseif (max(abs(obj.ygrid-circshift(obj.ygrid,[0,1])),[], "all") == 0) && (max(abs(obj.xgrid-circshift(obj.xgrid,[1,0])),[], "all") == 0)
-                % xgrid is constant in 1st dimension, and ygrid constant in 2nd; we want
-                % the opposite, so swap them:
-                xmat = obj.ygrid;
-                ymat = obj.xgrid;
-            elseif isvector(obj.xgrid) && isvector(obj.ygrid)
-                [xmat, ymat] = ndgrid(obj.xgrid, obj.ygrid);
-            else
-                keyboard;
-            end
+            [xmat, ymat]    = grid_matrices(obj);
 
             k0              = 2*pi/obj.wavelength;
 
@@ -209,10 +189,10 @@ classdef Msquared
             M2_x_corrected          = sqrt(wx0squared_fl_corrected)*sqrt(wkxsquared_fl(1))/2; % Equation 7.120
             M2_y_corrected          = sqrt(wy0squared_fl_corrected)*sqrt(wkysquared_fl(1))/2;  % Equation 7.120
 
-            z0xp                    = k0^2*wxsquared_fl./(Rx.*wkxsquared_fl); % distance of sample plane downstream from focus
-            z0yp                    = k0^2*wysquared_fl./(Ry.*wkysquared_fl); % distance of sample plane downstream from focus
-            z0x                     = z0xp(1);
-            z0y                     = z0yp(1);
+            % distance of sample plane downstream from focus (z0 < 0 when the sample plane is before the waist)
+            z0x                     = k0^2*wxsquared_fl(1)./(Rx_corrected.*wkxsquared_fl(1));
+            z0y                     = k0^2*wysquared_fl(1)./(Ry_corrected.*wkysquared_fl(1));
+
             % Collect all the results as data struct fields in the 'results' class property
             obj.results.pulse_M2_x      = M2_x_corrected;
             obj.results.pulse_M2_y      = M2_y_corrected;
@@ -249,23 +229,7 @@ classdef Msquared
             %   three times to improve accuracy, then computes
             %   beam quality using the second-moment method.
             k0 = 2*pi/obj.wavelength;
-            if isvector(obj.xgrid) || isvector(obj.ygrid)
-                % if xgrid and ygrid are provided as vectors, make meshgrids out of them:
-                [ymat,xmat]=meshgrid(obj.ygrid,obj.xgrid);
-            end
-
-            % Make sure xgrid is constant in 2nd dimension and ygrid in 1st dimension
-            if (max(abs(obj.xgrid-circshift(obj.xgrid,[0,1])),[], "all") == 0) && (max(abs(obj.ygrid-circshift(obj.ygrid,[1,0])),[], "all") == 0)
-                xmat = obj.xgrid;
-                ymat = obj.ygrid;
-            elseif (max(abs(obj.ygrid-circshift(obj.ygrid,[0,1])),[], "all") == 0) && (max(abs(obj.xgrid-circshift(obj.xgrid,[1,0])),[], "all") == 0)
-                xmat = obj.ygrid;
-                ymat = obj.xgrid;
-            elseif isvector(obj.xgrid) && isvector(obj.ygrid)
-                [xmat, ymat] = ndgrid(obj.xgrid, obj.ygrid);
-            else
-                keyboard;
-            end
+            [xmat, ymat] = grid_matrices(obj);
 
             % Calculate spatial steps, create spatial frequency ("k-space") grids
             Nx                  = size(xmat,1);
@@ -420,14 +384,11 @@ classdef Msquared
                 end
 
             % Collect into results class property
-				z0x2 = -k0^2 .* wx.^2 ./ (Rx_corrected.*wkx_original.^2); % dist to focus
-                z0y2 = -k0^2 .* wy.^2 ./ (Ry_corrected.*wky_original.^2); % dist to focus
-                z0x  = pi.*sqrt(wx0squared)./(M2_x*obj.wavelength).*sqrt(wx.^2 - wx0squared); % dist to focus
-                z0y  = pi.*sqrt(wy0squared)./(M2_y*obj.wavelength).*sqrt(wy.^2 - wy0squared); % dist to focus
-                obj.results.z0x2        = z0x2; % 
-                obj.results.z0y2        = z0y2; % 
-				obj.results.z0x         = z0x; % dist to focus
-                obj.results.z0y         = z0y; % dist to focus
+                % distance from waist to measurement plane; positive when measurement plane is downstream of waist
+                z0x = k0^2 .* wx.^2 ./ (Rx_corrected.*wkx_original.^2);
+                z0y = k0^2 .* wy.^2 ./ (Ry_corrected.*wky_original.^2);
+                obj.results.z0x         = z0x; % distance from waist to measurement plane
+                obj.results.z0y         = z0y; % distance from waist to measurement plane
                 obj.results.M2_x        = M2_x;
                 obj.results.M2_y        = M2_y;
                 obj.results.Rx          = -Rx_corrected;
@@ -454,28 +415,9 @@ classdef Msquared
             %   moment beam widths W.WX and W.WY for the field in
             %   OBJ.
             arguments
-                obj Msquared
+                obj beam.Msquared
             end
-            if ~(isvector(obj.xgrid) || ismatrix(obj.xgrid))
-%                 error('xgrid must be a vector or matrix; is has %i dimensions and size %s', ndims(obj.xgrid));
-%                 sizestr = sprintf(join(repmat("%i ", ndims(obj.xgrid))), size(obj.xgrid));
-                sizestr = sprintf(join(repmat("%i x", [1, ndims(obj.xgrid)-1]))+" %i", size(obj.xgrid));
-                error('xgrid must be a vector or matrix; is has %i dimensions and size %s', ndims(obj.xgrid), sizestr);
-            end
-            if ~(isvector(obj.ygrid) || ismatrix(obj.ygrid))
-                error('ygrid must be a vector or matrix; is has %i dimensions', ndims(obj.ygrid));
-            end
-
-            if ~isequal(ndims(obj.xgrid),ndims(obj.ygrid))
-                error('xgrid and ygrid must have the same number of dimensions; xgrid has %i and ygrid has %i.', ndims(obj.xgrid), ndims(obj.ygrid));
-            end
-
-            if ismatrix(obj.xgrid)
-                xmat = obj.xgrid;
-                ymat = obj.ygrid;
-            elseif isvector(obj.xgrid)
-                [ymat, xmat] = meshgrid(obj.ygrid, obj.xgrid);
-            end
+            [xmat, ymat] = grid_matrices(obj);
             Nt = size(obj.field,3);
             xBar = zeros(Nt, 1);
             yBar = zeros(Nt, 1);
@@ -497,4 +439,35 @@ classdef Msquared
         end
 
     end % end methods
+
+    methods (Access = private)
+
+        function [xmat, ymat] = grid_matrices(obj)
+            %grid_matrices - x and y position matrices matching the field layout
+            %   [XMAT, YMAT] = grid_matrices(OBJ) returns Nx-by-Ny matrices
+            %   with x varying along the 1st dimension and y along the 2nd.
+            %   xgrid and ygrid may be vectors (any orientation) or matrices
+            %   made with ndgrid(x,y) or meshgrid(y,x).
+            if isvector(obj.xgrid) && isvector(obj.ygrid)
+                % vectors (row or column): build the matrices
+                [xmat, ymat] = ndgrid(obj.xgrid(:), obj.ygrid(:));
+            elseif isvector(obj.xgrid) || isvector(obj.ygrid)
+                error('beam:Msquared:gridShape', 'xgrid and ygrid must both be vectors or both be matrices.');
+            elseif (max(abs(obj.xgrid-circshift(obj.xgrid,[0,1])),[], "all") == 0) && (max(abs(obj.ygrid-circshift(obj.ygrid,[1,0])),[], "all") == 0)
+                % xgrid is constant in 2nd dimension, and ygrid in 1st
+                xmat = obj.xgrid;
+                ymat = obj.ygrid;
+            elseif (max(abs(obj.ygrid-circshift(obj.ygrid,[0,1])),[], "all") == 0) && (max(abs(obj.xgrid-circshift(obj.xgrid,[1,0])),[], "all") == 0)
+                % xgrid is constant in 1st dimension, and ygrid constant in 2nd; x would
+                % run along the 2nd dimension of the field, which the calculation does
+                % not support
+                error('beam:Msquared:gridOrientation', ['xgrid must vary along the 1st dimension and ygrid along the 2nd ' ...
+                    '(x along rows of field). Make grids with ndgrid(x,y) or meshgrid(y,x), not meshgrid(x,y).']);
+            else
+                error('beam:Msquared:gridOrientation', ['xgrid must be constant along the 2nd dimension and ygrid ' ...
+                    'constant along the 1st. Make grids with ndgrid(x,y) or meshgrid(y,x).']);
+            end
+        end
+
+    end % end private methods
 end

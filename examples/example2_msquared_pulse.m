@@ -135,8 +135,8 @@ fprintf('wx0 (waist):      %.4f mm          %.4f mm\n', results_mex.wx0(t0_idx)*
 fprintf('wy0 (waist):      %.4f mm          %.4f mm\n', results_mex.wy0(t0_idx)*1e3, results_class.wy0(t0_idx)*1e3);
 fprintf('Rx:               %+.1f mm         %+.1f mm\n',results_mex.Rx(t0_idx)*1e3,   results_class.Rx(t0_idx)*1e3);
 fprintf('Ry:               %+.1f mm         %+.1f mm\n',results_mex.Ry(t0_idx)*1e3,   results_class.Ry(t0_idx)*1e3);
-fprintf('z0x (Rayleigh):   %.2f mm          %.2f mm\n', results_mex.z0x(t0_idx)*1e3, results_class.z0x(t0_idx)*1e3);
-fprintf('z0y (Rayleigh):   %.2f mm          %.2f mm\n', results_mex.z0y(t0_idx)*1e3, results_class.z0y(t0_idx)*1e3);
+fprintf('z0x (to waist):   %+.2f mm         %+.2f mm\n', results_mex.z0x(t0_idx)*1e3, results_class.z0x(t0_idx)*1e3);
+fprintf('z0y (to waist):   %+.2f mm         %+.2f mm\n', results_mex.z0y(t0_idx)*1e3, results_class.z0y(t0_idx)*1e3);
 fprintf('xBar centroid:    %.6f mm        %.6f mm\n', results_mex.xBar(t0_idx)*1e3, results_class.xBar(t0_idx)*1e3);
 fprintf('yBar centroid:    %.6f mm        %.6f mm\n', results_mex.yBar(t0_idx)*1e3, results_class.yBar(t0_idx)*1e3);
 fprintf('kxBar centroid:   %.6f rad/mm     %.6f rad/mm\n', results_mex.kxBar(t0_idx)*1e-3, results_class.kxBar(t0_idx)*1e-3);
@@ -180,11 +180,10 @@ fprintf('pulse_kxBar:       %.6f rad/mm     %.6f rad/mm\n', results_flat_mex.pul
 fprintf('pulse_kyBar:       %.6f rad/mm     %.6f rad/mm\n', results_flat_mex.pulse_kyBar*1e-3, results_flat_class.pulse_kyBar*1e-3);
 fprintf('pulse_wkx:         %.6f rad/mm     %.6f rad/mm\n', results_flat_mex.pulse_wkx*1e-3,  results_flat_class.pulse_wkx*1e-3);
 fprintf('pulse_wky:         %.6f rad/mm     %.6f rad/mm\n', results_flat_mex.pulse_wky*1e-3,  results_flat_class.pulse_wky*1e-3);
-% z0 fields differ in shape/meaning between the two implementations
-fprintf('pulse_z0x:         %.4f mm          %.4f mm*\n', ...
-    results_flat_mex.pulse_z0x*1e3, results_flat_class.pulse_z0x(1)*1e3);
-fprintf('pulse_z0y:         %.4f mm          %.4f mm*\n', ...
-    results_flat_mex.pulse_z0y*1e3, results_flat_class.pulse_z0y(1)*1e3);
+fprintf('pulse_z0x:         %+.4f mm         %+.4f mm\n', ...
+    results_flat_mex.pulse_z0x*1e3, results_flat_class.pulse_z0x*1e3);
+fprintf('pulse_z0y:         %+.4f mm         %+.4f mm\n', ...
+    results_flat_mex.pulse_z0y*1e3, results_flat_class.pulse_z0y*1e3);
 fprintf('=================================================================\n');
 fprintf('MEX time:   %.4f s\n', t_flat_mex);
 fprintf('Class time: %.4f s\n', t_flat_class);

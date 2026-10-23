@@ -1,6 +1,28 @@
 Changelog for Msquared Toolbox
 ==============================
 
+Version 1.0.4 — 23 Oct 2026
+---------------------------
+Fixed (class and MEX)
+  - z0x/z0y are now signed: distance from the waist to the
+    measurement plane, positive downstream of the waist (z0 < 0
+    for a focusing beam, opposite in sign to Rx/Ry). Previously
+    the per-slice z0 was always positive.
+  - pulse_z0x/pulse_z0y now use the harmonic-sum R instead of the
+    first curvature-removal pass only (was off by ~1% and had the
+    opposite sign to the per-slice z0).
+  - Vector xgrid/ygrid inputs now work in any orientation; a column
+    x with a row y (or the reverse) used to crash the class.
+  - meshgrid(x,y) grids now raise a gridOrientation error. They
+    used to swap the x and y results without warning. Use
+    ndgrid(x,y) or meshgrid(y,x).
+  - calculate_second_moment works again (its arguments block named
+    the class without the beam. namespace) and accepts vector grids.
+  - MEX checks that xgrid/ygrid sizes match the field.
+
+Removed
+  - Class results.z0x2/z0y2 (replaced by the signed z0x/z0y).
+
 Version 1.0.3 — 29 Jun 2026
 ---------------------------
 Performance

@@ -29,6 +29,8 @@
  * the add-ons explorer and compile with: mex msquared_mex.cpp
  */
 // changelog: July 7, 2026: negate Rx, Ry to make convention positive roc is focusing
+// changelog: October 23, 2026: signed z0 (positive downstream of waist), pulse z0 uses
+//            harmonic-sum R, meshgrid(x,y) grids are an error instead of a silent x/y swap
 #define _USE_MATH_DEFINES
 #include "mex.h"
 #include <cmath>
@@ -658,9 +660,10 @@ static void compute_pulse_flat(
     M2x = std::sqrt(wx0sq) * std::sqrt(wkxsq) / 2.0;
     M2y = std::sqrt(wy0sq) * std::sqrt(wkysq) / 2.0;
 
-    /* Rayleigh range — matches MATLAB class calculate_pulse_flat */
-    z0x = k0 * k0 * wxsq / (Rx_vals[0] * wkxsq);
-    z0y = k0 * k0 * wysq / (Ry_vals[0] * wkysq);
+    /* Distance of sample plane downstream from focus (harmonic-sum R; z0 < 0 before
+     * the waist) — matches MATLAB class calculate_pulse_flat */
+    z0x = k0 * k0 * wxsq / (Rx_c * wkxsq);
+    z0y = k0 * k0 * wysq / (Ry_c * wkysq);
 
     /* Flattened field */
     if (flattened_out) {
@@ -717,58 +720,59 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     /* Build meshgrid. Msquared expects:
      *   xgrid varies in 1st dim (constant in 2nd)
      *   ygrid varies in 2nd dim (constant in 1st)
-     * Standard MATLAB meshgrid(xvec, yvec) gives the opposite.
-     * We detect orientation and swap if needed. */
+     * i.e. ndgrid(x,y) or meshgrid(y,x). meshgrid(x,y) gives the opposite,
+     * which would put x along the 2nd dimension of the field, so it is an error. */
     std::vector<double> xmat(Nx * Ny), ymat(Nx * Ny);
     mwSize xgM = mxGetM(prhs[1]), xgN = mxGetN(prhs[1]);
     mwSize ygM = mxGetM(prhs[2]), ygN = mxGetN(prhs[2]);
+    bool xg_vec = (xgM == 1 || xgN == 1);
+    bool yg_vec = (ygM == 1 || ygN == 1);
 
-    if (xgM == Nx && xgN == Ny && ygM == Nx && ygN == Ny) {
-        /* Check orientation by seeing which dimension is constant.
-         * xmat should be constant in 2nd dim (col): xmat(iy,ix) == xmat(iy,ix+1)
-         * ymat should be constant in 1st dim (row): ymat(iy,ix) == ymat(iy+1,ix) */
-        bool x_const_in_col = true;
-        bool y_const_in_row = true;
-        for (mwSize ix = 0; ix < Ny - 1 && x_const_in_col; ix++) {
-            if (std::abs(xgrid[IDX(0, ix, Nx)] - xgrid[IDX(0, ix + 1, Nx)]) > 1e-15)
-                x_const_in_col = false;
+    if (!xg_vec && !yg_vec) {
+        if (xgM != Nx || xgN != Ny || ygM != Nx || ygN != Ny) {
+            mexErrMsgIdAndTxt("msquared_mex:gridSize",
+                "xgrid and ygrid matrices must be the same size as field(:,:,1).");
         }
-        for (mwSize iy = 0; iy < Nx - 1 && y_const_in_row; iy++) {
-            if (std::abs(ygrid[IDX(iy, 0, Nx)] - ygrid[IDX(iy + 1, 0, Nx)]) > 1e-15)
-                y_const_in_row = false;
-        }
+        /* Check orientation by seeing which dimension is constant. */
+        auto is_const = [&](const double* g, bool along_2nd) {
+            for (mwSize ix = 0; ix < Ny; ix++)
+                for (mwSize iy = 0; iy < Nx; iy++) {
+                    mwSize nb = along_2nd ? IDX(iy, 0, Nx) : IDX(0, ix, Nx);
+                    if (g[IDX(iy, ix, Nx)] != g[nb]) return false;
+                }
+            return true;
+        };
 
-        if (x_const_in_col && y_const_in_row) {
+        if (is_const(xgrid, true) && is_const(ygrid, false)) {
             /* Correct orientation */
             std::memcpy(xmat.data(), xgrid, Nx * Ny * sizeof(double));
             std::memcpy(ymat.data(), ygrid, Nx * Ny * sizeof(double));
+        } else if (is_const(xgrid, false) && is_const(ygrid, true)) {
+            mexErrMsgIdAndTxt("msquared_mex:gridOrientation",
+                "xgrid must vary along the 1st dimension and ygrid along the 2nd "
+                "(x along rows of field). Make grids with ndgrid(x,y) or meshgrid(y,x), not meshgrid(x,y).");
         } else {
-            /* Swapped: swap xgrid and ygrid */
-            for (mwSize i = 0; i < Nx * Ny; i++) {
-                xmat[i] = ygrid[i];
-                ymat[i] = xgrid[i];
-            }
+            mexErrMsgIdAndTxt("msquared_mex:gridOrientation",
+                "xgrid must be constant along the 2nd dimension and ygrid constant "
+                "along the 1st. Make grids with ndgrid(x,y) or meshgrid(y,x).");
         }
-    } else {
-        /* Vectors -> build meshgrid with correct orientation.
+    } else if (xg_vec && yg_vec) {
+        if (mxGetNumberOfElements(prhs[1]) != Nx || mxGetNumberOfElements(prhs[2]) != Ny) {
+            mexErrMsgIdAndTxt("msquared_mex:gridSize",
+                "xgrid must have size(field,1) elements and ygrid size(field,2) elements.");
+        }
+        /* Vectors (row or column) -> build meshgrid with correct orientation.
          * xmat(iy,ix) = xvec(iy), ymat(iy,ix) = yvec(ix) */
-        std::vector<double> xv(Nx), yv(Ny);
-        if (xgM == Nx) {
-            for (mwSize i = 0; i < Nx; i++) xv[i] = xgrid[i];
-        } else {
-            for (mwSize i = 0; i < Nx; i++) xv[i] = xgrid[i];
-        }
-        if (ygN == Ny) {
-            for (mwSize i = 0; i < Ny; i++) yv[i] = ygrid[i];
-        } else {
-            for (mwSize i = 0; i < Ny; i++) yv[i] = ygrid[i];
-        }
+        std::vector<double> xv(xgrid, xgrid + Nx), yv(ygrid, ygrid + Ny);
         for (mwSize ix = 0; ix < Ny; ix++) {
             for (mwSize iy = 0; iy < Nx; iy++) {
                 xmat[IDX(iy, ix, Nx)] = xv[iy];
                 ymat[IDX(iy, ix, Nx)] = yv[ix];
             }
         }
+    } else {
+        mexErrMsgIdAndTxt("msquared_mex:gridShape",
+            "xgrid and ygrid must both be vectors or both be matrices.");
     }
 
     /* ---- SECOND MOMENT mode: simple spatial widths only (no FFT / M2) ---- */
@@ -965,10 +969,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
             kxBar[K] = r.kxBar; kyBar[K] = r.kyBar;
             wkx[K] = r.wkx;   wky[K] = r.wky;
 
-            double wx_diff = wx[K] * wx[K] - wx0[K] * wx0[K];
-            double wy_diff = wy[K] * wy[K] - wy0[K] * wy0[K];
-            z0x[K] = (wx_diff > 0) ? M_PI * wx0[K] / (M2x[K] * wavelength) * std::sqrt(wx_diff) : 0;
-            z0y[K] = (wy_diff > 0) ? M_PI * wy0[K] / (M2y[K] * wavelength) * std::sqrt(wy_diff) : 0;
+            /* Distance from waist to measurement plane; positive downstream of waist.
+             * r.Rx is negated (positive = focusing), so undo that here. */
+            z0x[K] = -k0 * k0 * wx[K] * wx[K] / (r.Rx * wkx[K] * wkx[K]);
+            z0y[K] = -k0 * k0 * wy[K] * wy[K] / (r.Ry * wky[K] * wky[K]);
         }
     }
 

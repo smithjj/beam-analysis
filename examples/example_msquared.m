@@ -2,7 +2,7 @@
 %
 % Constructs a Gaussian transverse electric field with specified beam
 % diameter (FWHM) and radius of curvature, then calls msquared_mex to
-% compute the beam propagation parameters (M^2, waist, Rayleigh range, etc.)
+% compute the beam propagation parameters (M^2, waist, distance to waist, etc.)
 %
 % Grid:    3 mm x 3 mm, 128 x 128 points
 % Beam:    FWHM diameter = 0.750 mm,  R = 300 mm
@@ -85,8 +85,8 @@ fprintf('wx0 (waist):    %.4f mm\n', results.wx0*1e3);
 fprintf('wy0 (waist):    %.4f mm\n', results.wy0*1e3);
 fprintf('Rx:             %.1f mm\n', results.Rx*1e3);
 fprintf('Ry:             %.1f mm\n', results.Ry*1e3);
-fprintf('z0x (Rayleigh): %.2f mm\n', results.z0x*1e3);
-fprintf('z0y (Rayleigh): %.2f mm\n', results.z0y*1e3);
+fprintf('z0x (to waist): %+.2f mm\n', results.z0x*1e3);
+fprintf('z0y (to waist): %+.2f mm\n', results.z0y*1e3);
 fprintf('xBar centroid:  %.6f mm\n', results.xBar*1e3);
 fprintf('yBar centroid:  %.6f mm\n', results.yBar*1e3);
 fprintf('===========================================\n');
